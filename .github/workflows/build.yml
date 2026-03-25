@@ -48,7 +48,7 @@ jobs:
       - name: Find and upload APK
         id: find_apk
         run: |
-          APK_PATH=$(find . -path "*/outputs/apk/debug/*.apk" -print -quit)
+          APK_PATH=$(find . -path "*/outputs/apk/*/*.apk" -print -quit)
           if [ -z "$APK_PATH" ]; then
             echo "❌ No APK found"
             find . -type f -name "*.apk" 2>/dev/null || true
