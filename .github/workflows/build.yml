@@ -16,15 +16,15 @@ jobs:
         uses: actions/checkout@v4
 
       # 1. 设置 JDK 17，并明确保存路径
-      - name: Set up JDK 17
+      - name: Set up JDK 17,11
         id: setup-java
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '11'
           distribution: 'temurin'
           cache: 'gradle'
 
-      # 2. 将 JAVA_HOME 写入环境，确保所有步骤使用 JDK 17
+      # 2. 将 JAVA_HOME 写入环境，确保所有步骤使用 JDK 17，11
       - name: Set JAVA_HOME globally
         run: echo "JAVA_HOME=${{ steps.setup-java.outputs.path }}" >> $GITHUB_ENV
 
