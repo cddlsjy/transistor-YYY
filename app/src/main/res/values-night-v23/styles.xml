@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme -->
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <!-- Don't show light status bar -->
+        <item name="android:windowLightStatusBar">false</item>
+
+    </style>
+
+</resources>

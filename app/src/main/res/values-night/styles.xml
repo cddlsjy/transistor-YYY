@@ -11,7 +11,6 @@
         <item name="elevationOverlayEnabled">false</item>
 
         <!-- Don't show light status bar -->
-        <item name="android:windowLightStatusBar">false</item>
         <item name="android:statusBarColor">@color/status_bar_background</item>
 
     </style>

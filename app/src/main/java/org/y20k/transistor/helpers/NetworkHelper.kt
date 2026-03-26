@@ -46,13 +46,9 @@ object NetworkHelper {
     fun isConnectedToWifi(context: Context): Boolean {
         var result: Boolean = false
         val connMgr = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork: Network? = connMgr.activeNetwork
-        if (activeNetwork != null) {
-            val capabilities: NetworkCapabilities? = connMgr.getNetworkCapabilities(activeNetwork)
-            if (capabilities != null) {
-                // check if a Wifi connection is active
-                result = capabilities.hasTransport(TRANSPORT_WIFI)
-            }
+        val networkInfo = connMgr.activeNetworkInfo
+        if (networkInfo != null && networkInfo.isConnected) {
+            result = networkInfo.type == ConnectivityManager.TYPE_WIFI
         }
         return result
     }
@@ -62,13 +58,9 @@ object NetworkHelper {
     fun isConnectedToCellular(context: Context): Boolean {
         var result: Boolean = false
         val connMgr = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork: Network? = connMgr.activeNetwork
-        if (activeNetwork != null) {
-            val capabilities: NetworkCapabilities? = connMgr.getNetworkCapabilities(activeNetwork)
-            if (capabilities != null) {
-                // check if a cellular connection is active
-                result = capabilities.hasTransport(TRANSPORT_CELLULAR)
-            }
+        val networkInfo = connMgr.activeNetworkInfo
+        if (networkInfo != null && networkInfo.isConnected) {
+            result = networkInfo.type == ConnectivityManager.TYPE_MOBILE
         }
         return result
     }
@@ -78,12 +70,14 @@ object NetworkHelper {
     fun isConnectedToVpn(context: Context): Boolean {
         var result: Boolean = false
         val connMgr = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork: Network? = connMgr.activeNetwork
-        if (activeNetwork != null) {
-            val capabilities: NetworkCapabilities? = connMgr.getNetworkCapabilities(activeNetwork)
-            if (capabilities != null) {
-                // check if a VPN connection is active
-                result = capabilities.hasTransport(TRANSPORT_VPN)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            val activeNetwork: Network? = connMgr.activeNetwork
+            if (activeNetwork != null) {
+                val capabilities: NetworkCapabilities? = connMgr.getNetworkCapabilities(activeNetwork)
+                if (capabilities != null) {
+                    // check if a VPN connection is active
+                    result = capabilities.hasTransport(TRANSPORT_VPN)
+                }
             }
         }
         return result
@@ -93,8 +87,8 @@ object NetworkHelper {
     /* Checks if the active network connection is connected to any network */
     fun isConnectedToNetwork(context: Context): Boolean {
         val connMgr = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val activeNetwork: Network? = connMgr.activeNetwork
-        return activeNetwork != null
+        val networkInfo = connMgr.activeNetworkInfo
+        return networkInfo != null && networkInfo.isConnected
     }
 
 

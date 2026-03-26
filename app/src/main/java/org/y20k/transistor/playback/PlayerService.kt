@@ -230,7 +230,13 @@ class PlayerService(): MediaBrowserServiceCompat() {
         }
         // append metadata to metadata history
         if (metadataHistory.contains(metadataString)) {
-            metadataHistory.removeIf { it == metadataString }
+            val iterator = metadataHistory.iterator()
+            while (iterator.hasNext()) {
+                if (iterator.next() == metadataString) {
+                    iterator.remove()
+                    break
+                }
+            }
         }
         metadataHistory.add(metadataString)
         // trim metadata list

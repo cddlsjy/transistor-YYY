@@ -131,7 +131,7 @@ object ImageHelper {
             }
             else -> {
                 // default return
-                return context.resources.getColor(R.color.default_neutral_medium_light, null)
+                return ContextCompat.getColor(context, R.color.default_neutral_medium_light)
             }
         }
     }
