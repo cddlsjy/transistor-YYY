@@ -1,34 +1,79 @@
-name: Build Android APK
+name: Build Android APK 
+ 
+on: 
+  push: 
+    branches: [ main ] 
+  workflow_dispatch: 
 
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
+env: 
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true 
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+jobs: 
+  build: 
+    runs-on: ubuntu-latest 
+    steps: 
+      - name: Checkout code 
+        uses: actions/checkout@v4 
 
-      - name: Set up JDK 11
-        uses: actions/setup-java@v4
-        with:
-          java-version: '11'
-          distribution: 'temurin'
+      - name: Set up JDK 11 
+        id: setup-java 
+        uses: actions/setup-java@v4 
+        with: 
+          java-version: '11' 
+          distribution: 'temurin' 
+          cache: 'gradle' 
 
-      # 给 gradlew 加执行权限
-      - name: Grant execute permission to gradlew
-        run: chmod +x ./gradlew
+      - name: Set JAVA_HOME globally 
+        run: echo "JAVA_HOME=${{ steps.setup-java.outputs.path }}" >> $GITHUB_ENV 
 
-      # 用项目自带的 gradlew 构建，不要手动指定 Gradle 版本！
-      - name: Build APK with gradlew
-        run: ./gradlew assembleDebug --stacktrace
+      - name: Verify Java 
+        run: | 
+          echo "JAVA_HOME: $JAVA_HOME" 
+          java -version 
 
-      # 上传 APK
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug
-          path: app/build/outputs/apk/debug/*.apk
+      - name: Make Gradlew Executable 
+        run: chmod +x ./gradlew 
+
+      - name: Setup Gradle 
+        uses: gradle/actions/setup-gradle@v3 
+        with: 
+          gradle-version: '8.2' 
+
+      - name: Check Project Structure 
+        run: | 
+          pwd 
+          ls -la 
+          if [ -f "settings.gradle" ] || [ -f "settings.gradle.kts" ]; then 
+            echo "✅ Gradle settings file found in root" 
+          else 
+            echo "❌ No settings.gradle file in root directory" 
+            echo "Looking for Android project structure..." 
+            find . -name "settings.gradle" -o -name "settings.gradle.kts" -type f 
+          fi 
+
+      - name: Build APK 
+        run: | 
+          if [ -f "./gradlew" ]; then 
+            ./gradlew assembleDebug --stacktrace --no-daemon 
+          else 
+            gradle assembleDebug --stacktrace --no-daemon 
+          fi 
+
+      - name: Find and upload APK 
+        id: find_apk 
+        run: | 
+          APK_PATH=$(find . -name "*.apk" -type f | head -n 1) 
+          if [ -z "$APK_PATH" ]; then 
+            echo "❌ No APK found" 
+            find . -path "*/build/outputs/*" -type f | head -20 
+            exit 1 
+          fi 
+          echo "✅ Found APK: $APK_PATH" 
+          echo "apk_path=$APK_PATH" >> $GITHUB_OUTPUT 
+
+      - name: Upload APK 
+        uses: actions/upload-artifact@v4 
+        with: 
+          name: app-debug-apk 
+          path: ${{ steps.find_apk.outputs.apk_path }} 
+          retention-days: 7
