@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -18,17 +18,21 @@ import android.app.DownloadManager
 import android.content.Context
 import android.database.Cursor
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.core.net.toUri
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.y20k.transistor.Keys
 import org.y20k.transistor.R
 import org.y20k.transistor.core.Collection
 import org.y20k.transistor.core.Station
 import org.y20k.transistor.extensions.copy
-import java.util.*
+import java.util.Date
+import java.util.StringTokenizer
 
 
 /*
@@ -37,7 +41,7 @@ import java.util.*
 object DownloadHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(DownloadHelper::class.java)
+    private val TAG: String = DownloadHelper::class.java.simpleName
 
 
     /* Main class variables */
@@ -85,7 +89,7 @@ object DownloadHelper {
             }
         }
         enqueueDownload(context, uris.toTypedArray(), Keys.FILE_TYPE_IMAGE)
-        LogHelper.i(TAG, "Updating all station images.")
+        Log.i(TAG, "Updating all station images.")
     }
 
 
@@ -98,8 +102,8 @@ object DownloadHelper {
         if (downloadResult == null) {
             val downloadErrorCode: Int = getDownloadError(downloadId)
             val downloadErrorFileName: String = getDownloadFileName(downloadManager, downloadId)
-            Toast.makeText(context, "${context.getString(R.string.toastmessage_error_download_error)}: $downloadErrorFileName ($downloadErrorCode)", Toast.LENGTH_LONG).show()
-            LogHelper.w(TAG, "Download not successful: File name = $downloadErrorFileName Error code = $downloadErrorCode")
+            Toast.makeText(context, "${context.getString(R.string.toast_message_error_download_error)}: $downloadErrorFileName ($downloadErrorCode)", Toast.LENGTH_LONG).show()
+            Log.w(TAG, "Download not successful: File name = $downloadErrorFileName Error code = $downloadErrorCode")
             removeFromActiveDownloads(arrayOf(downloadId), deleteDownload = true)
             return
         } else {
@@ -149,7 +153,7 @@ object DownloadHelper {
         // enqueue downloads
         val newIds = LongArray(uris.size)
         for (i in uris.indices) {
-            LogHelper.v(TAG, "DownloadManager enqueue: ${uris[i]}")
+            Log.v(TAG, "DownloadManager enqueue: ${uris[i]}")
             // check if valid url and prevent double download
             val uri: Uri = uris[i]
             val scheme: String = uri.scheme ?: String()
@@ -174,11 +178,11 @@ object DownloadHelper {
         val activeDownloadsCopy = activeDownloads.copy()
         activeDownloadsCopy.forEach { downloadId ->
             if (getRemoteFileLocation(downloadManager, downloadId) == remoteFileLocation) {
-                LogHelper.w(TAG, "File is already in download queue: $remoteFileLocation")
+                Log.w(TAG, "File is already in download queue: $remoteFileLocation")
                 return false
             }
         }
-        LogHelper.v(TAG, "File is not in download queue.")
+        Log.v(TAG, "File is not in download queue.")
         return true
     }
 
@@ -198,22 +202,13 @@ object DownloadHelper {
     }
 
 
-    /* Saves collection of radio station to storage */
-    private fun saveCollection(context: Context, m3uExport: Boolean = false) {
-        // save collection (not async) - and store modification date
-        modificationDate = CollectionHelper.saveCollection(context, collection, async = false)
-    }
-
-
     /* Reads station playlist file and adds it to collection */
     private fun addStation(context: Context, localFileUri: Uri, remoteFileLocation: String) {
         // read station playlist
         val station: Station = CollectionHelper.createStationFromPlaylistFile(context, localFileUri, remoteFileLocation)
         // detect content type on background thread
         CoroutineScope(IO).launch {
-            val deferred: Deferred<NetworkHelper.ContentType> = async(Dispatchers.Default) { NetworkHelper.detectContentTypeSuspended(station.getStreamUri()) }
-            // wait for result
-            val contentType: NetworkHelper.ContentType = deferred.await()
+            val contentType: NetworkHelper.ContentType = NetworkHelper.detectContentType(station.getStreamUri())
             // set content type
             station.streamContent = contentType.type
             // add station and save collection
@@ -230,9 +225,7 @@ object DownloadHelper {
         val station: Station = CollectionHelper.createStationFromPlaylistFile(context, localFileUri, remoteFileLocation)
         // detect content type on background thread
         CoroutineScope(IO).launch {
-            val deferred: Deferred<NetworkHelper.ContentType> = async(Dispatchers.Default) { NetworkHelper.detectContentTypeSuspended(station.getStreamUri()) }
-            // wait for result
-            val contentType: NetworkHelper.ContentType = deferred.await()
+            val contentType: NetworkHelper.ContentType = NetworkHelper.detectContentType(station.getStreamUri())
             // update content type
             station.streamContent = contentType.type
             // update station and save collection
@@ -282,10 +275,7 @@ object DownloadHelper {
         val cursor: Cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
         if (cursor.count > 0) {
             cursor.moveToFirst()
-            val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_URI)
-            if (columnIndex >= 0) {
-                remoteFileLocation = cursor.getString(columnIndex)
-            }
+            remoteFileLocation = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_URI))
         }
         return remoteFileLocation
     }
@@ -297,10 +287,7 @@ object DownloadHelper {
         val cursor: Cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
         if (cursor.count > 0) {
             cursor.moveToFirst()
-            val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_TITLE)
-            if (columnIndex >= 0) {
-                remoteFileLocation = cursor.getString(columnIndex)
-            }
+            remoteFileLocation = cursor.getString(cursor.getColumnIndex(DownloadManager.COLUMN_TITLE))
         }
         return remoteFileLocation
     }
@@ -312,10 +299,7 @@ object DownloadHelper {
         val cursor: Cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
         if (cursor.count > 0) {
             cursor.moveToFirst()
-            val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-            if (columnIndex >= 0) {
-                downloadStatus = cursor.getInt(columnIndex)
-            }
+            downloadStatus = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
         }
         return (downloadStatus == DownloadManager.STATUS_SUCCESSFUL)
     }
@@ -327,10 +311,7 @@ object DownloadHelper {
         val cursor: Cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
         if (cursor.count > 0) {
             cursor.moveToFirst()
-            val columnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-            if (columnIndex >= 0) {
-                downloadStatus = cursor.getInt(columnIndex)
-            }
+            downloadStatus = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
         }
         return downloadStatus == DownloadManager.STATUS_RUNNING
     }
@@ -342,15 +323,9 @@ object DownloadHelper {
         val cursor: Cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
         if (cursor.count > 0) {
             cursor.moveToFirst()
-            val statusColumnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)
-            if (statusColumnIndex >= 0) {
-                val downloadStatus = cursor.getInt(statusColumnIndex)
-                if (downloadStatus == DownloadManager.STATUS_FAILED) {
-                    val reasonColumnIndex = cursor.getColumnIndex(DownloadManager.COLUMN_REASON)
-                    if (reasonColumnIndex >= 0) {
-                        reason = cursor.getInt(reasonColumnIndex)
-                    }
-                }
+            val downloadStatus = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS))
+            if (downloadStatus == DownloadManager.STATUS_FAILED) {
+                reason = cursor.getInt(cursor.getColumnIndex(DownloadManager.COLUMN_REASON))
             }
         }
         return reason

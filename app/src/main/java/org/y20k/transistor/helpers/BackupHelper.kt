@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -17,6 +17,7 @@ package org.y20k.transistor.helpers
 import android.content.ContentResolver
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import org.y20k.transistor.R
 import java.io.*
@@ -28,14 +29,14 @@ import java.util.zip.ZipOutputStream
 object BackupHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(BackupHelper::class.java)
+    private val TAG: String = BackupHelper::class.java.simpleName
 
 
     /* Compresses all files in the app's external files directory into destination zip file */
     fun backup(context: Context, destinationUri: Uri) {
         val sourceFolder: File? = context.getExternalFilesDir("")
         if (sourceFolder != null && sourceFolder.isDirectory) {
-            Toast.makeText(context, "${context.getString(R.string.toastmessage_collection_backup)} ${FileHelper.getFileName(context, destinationUri)}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "${context.getString(R.string.toast_message_collection_backup)} ${FileHelper.getFileName(context, destinationUri)}", Toast.LENGTH_LONG).show()
             val resolver: ContentResolver = context.contentResolver
             val outputStream: OutputStream? = resolver.openOutputStream(destinationUri)
             ZipOutputStream(BufferedOutputStream(outputStream)).use { zipOutputStream ->
@@ -44,7 +45,7 @@ object BackupHelper {
                 }
             }
         } else {
-            LogHelper.e(TAG, "Unable to access External Storage.")
+            Log.e(TAG, "Unable to access External Storage.")
         }
     }
 
@@ -56,14 +57,11 @@ object BackupHelper {
             val data = ByteArray(2048)
             // get all File objects in folder
             for (file in source.listFiles()!!) {
-                val path = parentDirPath + File.separator + file.name
+                // make sure that path does not start with a separator (/)
+                val path: String = if (parentDirPath.isEmpty()) file.name else parentDirPath + File.separator + file.name
                 when (file.isDirectory) {
                     // CASE: Folder
                     true -> {
-//                        val entry = ZipEntry(path + File.separator) // add separator to make entry a folder
-//                        entry.time = file.lastModified()
-//                        entry.size = file.length()
-//                        zipOutputStream.putNextEntry(entry)
                         // call zipFolder recursively to add files within this folder
                         zipFolder(zipOutputStream, file, path)
                     }
@@ -94,7 +92,7 @@ object BackupHelper {
 
     /* Extracts zip backup  file and restores files and folders - Credit: https://www.baeldung.com/java-compress-and-uncompress*/
     fun restore(context: Context, sourceUri: Uri) {
-        Toast.makeText(context, context.getString(R.string.toastmessage_restoring_collection), Toast.LENGTH_LONG).show()
+        Toast.makeText(context, context.getString(R.string.toast_message_collection_restore), Toast.LENGTH_LONG).show()
 
         val resolver: ContentResolver = context.contentResolver
         val sourceInputStream: InputStream? = resolver.openInputStream(sourceUri)
@@ -110,17 +108,17 @@ object BackupHelper {
                 when (zipEntry.isDirectory) {
                     // CASE: Folder
                     true -> {
-                        // create folder if new file is just a file
+                        // create folder if zip entry is a folder
                         if (!newFile.isDirectory && !newFile.mkdirs()) {
-                            LogHelper.w(TAG,"Failed to create directory $newFile")
+                            Log.w(TAG,"Failed to create directory $newFile")
                         }
                     }
-                    // CASE: Files
+                    // CASE: File
                     false -> {
                         // create parent directory, if necessary
                         val parent: File? = newFile.parentFile
                         if (parent != null && !parent.isDirectory && !parent.mkdirs()) {
-                            LogHelper.w(TAG, "Failed to create directory $parent")
+                            Log.w(TAG, "Failed to create directory $parent")
                         }
                         // write file content
                         val fileOutputStream: FileOutputStream = FileOutputStream(newFile)
@@ -132,7 +130,7 @@ object BackupHelper {
                     }
                 }
             } catch (e: Exception) {
-                LogHelper.e(TAG, "Unable to safely create get file. $e")
+                Log.e(TAG, "Unable to safely create file. $e")
             }
             // get next entry - zipEntry will be null, when zipInputStream has no more entries left
             zipEntry = zipInputStream.nextEntry

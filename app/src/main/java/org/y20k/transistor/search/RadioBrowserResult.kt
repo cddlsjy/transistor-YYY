@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -14,11 +14,10 @@
 
 package org.y20k.transistor.search
 
-import android.support.v4.media.session.PlaybackStateCompat
 import com.google.gson.annotations.Expose
 import org.y20k.transistor.Keys
 import org.y20k.transistor.core.Station
-import java.util.*
+import java.util.GregorianCalendar
 
 
 /*
@@ -30,7 +29,9 @@ data class RadioBrowserResult (@Expose val changeuuid: String,
                                @Expose val url: String,
                                @Expose val url_resolved: String,
                                @Expose val homepage: String,
-                               @Expose val favicon: String) {
+                               @Expose val favicon: String,
+                               @Expose val codec: String,
+                               @Expose val bitrate: Int) {
 
     /* Converts RadioBrowserResult to Station  */
     fun toStation(): Station = Station(
@@ -41,16 +42,18 @@ data class RadioBrowserResult (@Expose val changeuuid: String,
             stream = 0,
             streamContent = Keys.MIME_TYPE_UNSUPPORTED,
             homepage = homepage,
-            image = Keys.LOCATION_DEFAULT_STATION_IMAGE,
-            smallImage = Keys.LOCATION_DEFAULT_STATION_IMAGE,
+            image = String(),
+            smallImage = String(),
             imageColor = -1,
             imageManuallySet = false,
             remoteImageLocation = favicon,
             remoteStationLocation = url,
             modificationDate = GregorianCalendar.getInstance().time,
-            playbackState = PlaybackStateCompat.STATE_STOPPED,
+            isPlaying = false,
             radioBrowserStationUuid = stationuuid,
-            radioBrowserChangeUuid = changeuuid)
+            radioBrowserChangeUuid = changeuuid,
+            codec = codec,
+            bitrate = bitrate)
 
 }
 

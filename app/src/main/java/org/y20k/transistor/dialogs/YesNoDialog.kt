@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -18,7 +18,6 @@ import android.content.Context
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.y20k.transistor.Keys
 import org.y20k.transistor.R
-import org.y20k.transistor.helpers.LogHelper
 
 
 /*
@@ -34,7 +33,7 @@ class YesNoDialog (private var yesNoDialogListener: YesNoDialogListener) {
 
 
     /* Define log tag */
-    private val TAG = LogHelper.makeLogTag(YesNoDialog::class.java.simpleName)
+    private val TAG = YesNoDialog::class.java.simpleName
 
 
     /* Construct and show dialog - variant: message from string  */

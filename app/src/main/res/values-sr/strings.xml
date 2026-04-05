@@ -1,123 +1,111 @@
-<?xml version='1.0' encoding='UTF-8'?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- activities -->
-    <string name="app_name">Транзистор</string>  <!-- please do not translate app_name - transcription into different alphabet types is fine though -->
-
-    <!-- app shortcuts -->
-    <string name="shortcut_last_station_short_label">Претходна станица</string>
-    <string name="shortcut_last_station_long_label">Пусти претходну станицу</string>
-    <string name="shortcut_last_station_disabled_message">Пречица за пуштање претходне станице искључена.</string>
-
-    <!-- menu entries -->
-    <string name="menu_icon">Промени икону</string>
-    <string name="menu_delete">Обриши</string>
-    <string name="menu_rename">Преименуј</string>
-    <string name="menu_shortcut">Постави на почетни екран</string>
-
-    <!-- descriptions -->
-    <string name="descr_app_icon">Икона апликације која означава стари радио</string>
-    <string name="descr_station_options_button">Прикажи опције за радио станицу</string>
-    <string name="descr_station_name_example">Пример ФМ</string>
-    <string name="descr_station_metadata_example">Извођач — наслов</string>
-    <string name="descr_station_stream_loading">Учитавам ток…</string>
-    <string name="descr_playback_button_play">Пусти</string>
-    <string name="descr_playback_button_stop">Заустави</string>
-    <string name="descr_playback_indicator">Показивач тренутног пуштања</string>
-    <string name="descr_timer_icon">Икона тајмера</string>
-    <!--<string name="descr_player_sheet_button_minimize"></string>-->
-    <string name="descr_player_sheet_content_copy_icon">Икона копирања садржаја</string>
-    <string name="descr_player_sheet_p_stream_url">Веза тока изабране радио станице</string>
-    <!--<string name="descr_list_add_new"></string>-->
-    <!--<string name="descr_list_add_select_stream_dropdown"></string>-->
-
-    <!-- player -->
-    <!--<string name="player_sheet_h1_details"></string>-->
-    <!--<string name="player_sheet_h2_current_session"></string>-->
-    <string name="player_sheet_h2_station_metadata">Тренутно пуштање</string>
-    <string name="player_sheet_h2_stream_url">Веза тока</string>
-    <string name="player_sheet_h2_station_mime_type">МИМЕ тип</string>
-    <string name="player_sheet_h2_station_channel_count">Број канала</string>
-    <string name="player_sheet_h2_station_sample_rate">Узорковање</string>
-    <!--<string name="player_sheet_h2_station_bitrate"></string>-->
-
-    <!-- dialogs -->
+    <string name="app_name">Транзистор</string>
+    <!-- please do not translate app_name - transcription into different alphabet types is fine though -->
+    <string name="shortcut_last_station_short_label">Последња станица</string>
+    <string name="shortcut_last_station_long_label">Пусти последњу станицу</string>
+    <string name="shortcut_last_station_disabled_message">Пречица за пуштање последње станице је онемогућена.</string>
+    <string name="descr_app_icon">Иконица апликације која приказује стари радио</string>
+    <string name="player_sheet_h2_station_metadata">Тренутно пуштено</string>
+    <string name="player_sheet_h2_stream_url">Линк стрима</string>
     <string name="dialog_generic_button_okay">У реду</string>
-    <string name="dialog_generic_button_cancel">Одустани</string>
-    <string name="dialog_add_station_button">Додај</string>
-    <string name="dialog_add_station_input_hint">Унесите везу тока</string>
-    <string name="dialog_add_station_message">Додавање нове станице</string>
-    <string name="dialog_add_station_howto">Можете да додајете везе аудио тока кодиране као МП3, ААЦ или Огг/Опус али и токове уграђене у .m3u или .pls фајлове. Алтернативно можете да додате нову станицу тапом на везе токова у вашем веб прегледачу.</string>
-    <string name="dialog_delete_station_message">Брисање станице</string>
-    <string name="dialog_button_delete">Обриши</string>
+    <string name="dialog_generic_button_cancel">Откажи</string>
+    <string name="dialog_error_message_default">Дошло је до грешке</string>
     <string name="dialog_rename_station_input_hint">Унесите нови назив</string>
-    <string name="dialog_rename_station_message">Преименовање станице</string>
-    <string name="dialog_button_rename">Преименуј</string>
-    <!-- <string name="dialog_add_station_choose_stream_heading"></string>-->
-    <!--<string name="dialog_add_station_choose_stream_message"></string>-->
-    <!--<string name="dialog_add_station_choose_stream_button"></string>-->
-
-    <!-- error dialogs -->
-    <string name="dialog_error_title_default">Грешка</string>
-    <string name="dialog_error_message_default">Десила се грешка</string>
-    <string name="dialog_error_details_button_default">Прикажи детаље</string>
-    <string name="dialog_error_details_default">Нема детаља</string>
-    <string name="dialog_error_details_write">Ова станица је вероватно дупликат или требате да проверите ваше спољашње складиште.</string>
-    <string name="dialog_error_title_fetch_download">Грешка преузимања</string>
-    <string name="dialog_error_title_fetch_read">Прочитај проблем</string>
-    <string name="dialog_error_title_fetch_write">Пријави проблем</string>
-    <string name="dialog_error_message_fetch_general_external_storage">Спољашње складиште:</string>
-    <string name="dialog_error_message_fetch_general_hint_m3u">Савет: Транзистор може да обради само МП3, ААЦ или Огг/Опус кодиране токове или адресе које завршавају са .m3u или .pls.</string>
-    <string name="dialog_error_message_fetch_general_playlist_type">МИМЕ тип фајла:</string>
-    <string name="dialog_error_message_fetch_general_stream_type">МИМЕ тип тока:</string>
-    <string name="dialog_error_message_fetch_general_file_content">Садржај удаљеног фајла:</string>
-    <string name="dialog_error_message_fetch_download">Транзистор није успио да рашчлани дату везу.</string>
-    <string name="dialog_error_message_fetch_download_station_url">Веза тока станице:</string>
-    <string name="dialog_error_message_fetch_read">Транзистор није успио да рашчлани дати фајл.</string>
-    <string name="dialog_error_message_fetch_read_file_location">Локација фајла:</string>
-    <string name="dialog_error_message_fetch_write">Транзистор није успио да сачува станицу.</string>
-
-    <!-- messages -->
-    <string name="toastmessage_add_download_started">Преузимање започето.</string>
-    <string name="toastmessage_add_open_file_started">Отварам фајл.</string>
-    <string name="toastmessage_long_press_playback_stopped">Пуштање заустављено (примећен дуги тап)</string>
-    <string name="toastmessage_long_press_playback_started">Пуштање почето (примећен дуги тап)</string>
-    <!--<string name="toastmessage_long_press_change_icon"></string>-->
-    <!--<string name="toastmessage_long_press_change_name"></string>-->
-    <!--<string name="toastmessage_theme_night"></string>-->
-    <!--<string name="toastmessage_theme_day"></string>-->
-    <!--<string name="toastmessage_theme_follow_system"></string>-->
-    <string name="toastmessage_shortcut_created">Пречица направљена.</string>
-    <string name="toastmessage_shortcut_not_created">Пречица није направљена. Овај уређај не допушта прављење пречица.</string>
-    <string name="toastmessage_list_refreshed">Поново учитавам списак станица.</string>
-    <string name="toastmessage_copied_to_clipboard">Веза тока копирана на клипборд.</string>
-    <string name="toastmessage_station_copied">Станица копирана на клипборд.</string>
-    <string name="toastmessage_stream_may_not_work">Откривен неподржани формат звука. Пуштање тока можда неће радити исправно.</string>
-    <string name="toastmessage_timer_activated">Тајмер активиран.</string>
-    <string name="toastmessage_timer_cancelled">Тајмер отказан.</string>
-    <string name="toastmessage_timer_duration_increased">Трајање повећано.</string>
-    <string name="toastalert_unable_to_connect">Не могу да се повежем. Уређај нема везу са интернетом или је ток застарио.</string>
-    <string name="toastalert_rename_unsuccessful">Не могох да преименујем станицу. Унесите други назив.</string>
-    <string name="toastalert_delete_successful">Станица је уклоњена.</string>
-    <string name="toastalert_no_external_storage">Не могох да приступим спољашњем складишту.</string>
-    <string name="toastalert_no_image_picker">No image picker available. Consider installing a Gallery application.</string>
-    <string name="toastalert_headphones_unplugged">Слушалице искључене. Пуштање заустављено.</string>
-    <string name="toastalert_permission_denied">Дозвола одбијена:</string>
-    <string name="toastalert_station_not_found">Не могох да нађем станицу.</string>
-    <string name="snackbar_request_storage_access">Транзистору треба приступ читања да би могао да приступи подацима са спољашњег складишта.</string>
-    <string name="snackbar_message_timer_set">Тајмер постављен на</string>
-
-    <!-- notification -->
+    <string name="toast_message_shortcut_created">Пречица направљена.</string>
+    <string name="toast_message_shortcut_not_created">Пречица није направљена. Овај уређај не дозвољава прављење пречица.</string>
+    <string name="toast_message_copied_to_clipboard">Копирано у привремену меморију.</string>
+    <string name="toast_message_no_image_picker">Није доступан бирач слика. Размислите о инсталирању апликације Галерија.</string>
     <string name="notification_play">Пусти</string>
     <string name="notification_stop">Заустави</string>
-    <string name="notification_channel_playback_name">Контроле пуштања</string>
-    <string name="notification_channel_playback_description">Контроле пуштања, лого станице и подаци о тренутно пуштеном.</string>
-
-    <!-- onboarding -->
-    <!--<string name="onboarding_app_description"></string>-->
-    <!--<string name="onboarding_app_get_started"></string>-->
-
-    <!-- Version 3 of Transistor removes the screens infosheet_howto and infosheet_about.
-    The last version containing those strings is v2.3.7
-    https://github.com/y20k/transistor/tree/v2.3.7/app/src/main/res -->
-
+    <string name="toast_message_error_station_not_found">Станица није пронађена.</string>
+    <string name="toast_message_install_file_helper">Инсталирајте менаџер фајлова.</string>
+    <string name="toast_message_station_duplicate">Дуплирана станица.</string>
+    <string name="toast_message_station_not_valid">Станица није важећа.</string>
+    <string name="toast_message_updating_station_images">Ажурирање слика станица.</string>
+    <string name="toast_message_collection_restore">Враћање радио станица из резервне копије.</string>
+    <string name="station_list_button_add_new_station">Додај нову станицу</string>
+    <string name="pref_backup_title">Прављење резервне копије станица</string>
+    <string name="pref_buffer_size_summary_enabled">Омогућен је већи бафер за пуштање радио стрима. Може потрајати дуже да репродукција почне.</string>
+    <string name="pref_edit_station_summary_disabled">Измењивање информација о станици је онемогућено.</string>
+    <string name="pref_edit_station_stream_summary_disabled">Измењивање линкова стримова је онемогућено.</string>
+    <string name="pref_m3u_export_title">Извоз M3U</string>
+    <string name="pref_theme_selection_mode_light">Светла</string>
+    <string name="pref_theme_selection_title">Тема апликације</string>
+    <string name="descr_card_starred_station">Станица означена с звездицом</string>
+    <string name="descr_player_station_image">Слика станице</string>
+    <string name="pref_advanced_title">Напредно</string>
+    <string name="station_list_button_settings">Подешавања</string>
+    <string name="notification_now_playing_channel_name">Контроле репродукције</string>
+    <string name="pref_theme_selection_summary">Тренутна тема:</string>
+    <string name="dialog_add_station_title">Додај станицу</string>
+    <string name="dialog_opml_import_details_default">Нема доступних детаља</string>
+    <string name="dialog_yes_no_message_update_station_images">Желите ли да преузмете најновију верзију слика свих станица?</string>
+    <string name="dialog_yes_no_positive_button_remove_station">Уклони</string>
+    <string name="pref_buffer_size_summary_disabled">Коришћење подразумеване величине бафера за пуштање радио стрима.</string>
+    <string name="pref_app_version_title">Верзија апликације</string>
+    <string name="pref_update_station_images_summary">Преузмите најновију верзију слика свих станица.</string>
+    <string name="descr_expanded_player_metadata_copy_button">Копирај информације о тренутно пуштеном</string>
+    <string name="pref_report_issue_summary">Пријавите грешке и предложите побољшања на Codeberg-у.</string>
+    <string name="dialog_error_message_no_network">Повежите се на интернет.</string>
+    <string name="toast_message_collection_backup">Прављење резервне копије радио станица у:</string>
+    <string name="toast_message_save_m3u">Чување радио станица као M3U…</string>
+    <string name="pref_restore_summary">Вратите колекцију радио станица из резервне копије. Постојеће станице ће бити замењене.</string>
+    <string name="pref_theme_selection_mode_device_default">Прати систем</string>
+    <string name="fragment_settings_title">Подешавања</string>
+    <string name="dialog_yes_no_message_remove_station">Уклонити ову станицу?</string>
+    <string name="descr_card_small_play_button">Пусти/заустави</string>
+    <string name="dialog_edit_station_name">Назив станице</string>
+    <string name="pref_about_title">О апликацији</string>
+    <string name="descr_expanded_player_sleep_timer_cancel_button">Откажи тајмер за спавање</string>
+    <string name="pref_theme_selection_mode_dark">Тема</string>
+    <string name="notification_skip_to_previous">Претходно</string>
+    <string name="dialog_yes_no_negative_button_cancel">Откажи</string>
+    <string name="dialog_error_title_no_network">Офлајн</string>
+    <string name="pref_general_title">Опште</string>
+    <string name="descr_expanded_player_sleep_timer_start_button">Започни тајмер за спавање</string>
+    <string name="pref_app_version_summary">Верзија</string>
+    <string name="onboarding_app_description">Радио апликација</string>
+    <string name="dialog_yes_no_positive_button_default">Да</string>
+    <string name="pref_edit_station_title">Измени станице</string>
+    <string name="dialog_find_station_hint">Назив или адреса стрима</string>
+    <string name="dialog_generic_details_button">Прикажи детаље</string>
+    <string name="dialog_edit_stream_uri">Адреса стрима</string>
+    <string name="dialog_find_station_button_add">Додај</string>
+    <string name="notification_skip_to_next">Следеће</string>
+    <string name="toast_message_error_missing_storage_permission">Дајте дозволу „Читање меморије“ за отварање овог фајла.</string>
+    <string name="descr_expanded_player_metadata_next_button">Следећи унос метаподатака тренутно пуштеног</string>
+    <string name="descr_expanded_player_sleep_timer_remaining_time">Време преостало на тајмеру за спавање</string>
+    <string name="descr_player_playback_button">Пусти/паузирај</string>
+    <string name="onboarding_app_get_started">Започните</string>
+    <string name="onboarding_app_import_running">Увоз ваших станица…</string>
+    <string name="cast_context_error">Преузимање контекста Cast није успело. Покушајте да ажурирате Google Play услуге и рестартујте апликацију.</string>
+    <string name="descr_card_station_image_change">Промена слике станице</string>
+    <string name="dialog_edit_save_changes">Сачувај промене</string>
+    <string name="dialog_find_station_title">Пронађите станицу</string>
+    <string name="pref_edit_station_stream_title">Измени линкова стримова</string>
+    <string name="dialog_find_station_no_results">Нема пронађених резултата.</string>
+    <string name="pref_backup_summary">Сачувајте колекцију радио станица, укључујући слике, у меморију уређаја.</string>
+    <string name="pref_edit_station_summary_enabled">Измењивање информација о станици је омогућено. Користите дуги притисак да уђете у режим за измењивање.</string>
+    <string name="dialog_restore_collection_replace_existing">Заменити тренутну колекцију радио станица радио станицом из резервне копије?</string>
+    <string name="pref_buffer_size_title">Користи већи бафер</string>
+    <string name="dialog_yes_no_positive_button_update_covers">Ажурирај</string>
+    <string name="toast_message_error_download_error">Грешка при преузимању</string>
+    <string name="toast_message_error_restart_playback_failed">Није могуће рестартовати репродукцију.</string>
+    <string name="toast_message_updating_collection">Ажурирање колекције станица.</string>
+    <string name="toast_message_sleep_timer_unable_to_start">Прво започните репродукцију.</string>
+    <string name="pref_edit_station_stream_summary_enabled">Измењивање линкова стримова је омогућено. Обавезно унесите исправну адресу стрима.</string>
+    <string name="pref_maintenance_title">Одржавање</string>
+    <string name="pref_restore_title">Враћање резервне копије станица</string>
+    <string name="pref_m3u_export_summary">Сачувајте своје радио станице у фајл плејлисте M3U који се може увести у друге плејере.</string>
+    <string name="pref_tap_anywhere_playback_summary_disabled">Додирните дугме за пуштање да бисте почели да слушате радио станицу.</string>
+    <string name="descr_card_station_image">Слика станице</string>
+    <string name="descr_expanded_player_metadata_previous_button">Претходни унос метаподатака тренутно пуштеног</string>
+    <string name="pref_report_issue_title">Пријава проблема</string>
+    <string name="pref_tap_anywhere_playback_summary_enabled">Додирните било где на картици радио станице да бисте почели да слушате радио станицу.</string>
+    <string name="pref_tap_anywhere_playback_title">Додирни радио станицу</string>
+    <string name="pref_update_station_images_title">Ажурирање слика станица</string>
+    <string name="descr_dialog_edit_place_on_home_screen_icon">Постави на почетни екран</string>
+    <string name="descr_back_icon">Иди назад</string>
+    <string name="notification_cancel">Откажи</string>
 </resources>

@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -21,24 +21,24 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Dispatchers.IO
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.y20k.transistor.Keys
 import org.y20k.transistor.core.Collection
 import org.y20k.transistor.core.Station
-import java.io.*
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.OutputStream
 import java.net.URL
 import java.text.NumberFormat
-import java.util.*
-import kotlin.coroutines.resume
-import kotlin.coroutines.suspendCoroutine
+import java.util.Date
+import java.util.Locale
 import kotlin.math.ln
 import kotlin.math.pow
 
@@ -49,7 +49,7 @@ import kotlin.math.pow
 object FileHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(FileHelper::class.java)
+    private val TAG: String = FileHelper::class.java.simpleName
 
 
     /* Return an InputStream for given Uri */
@@ -111,7 +111,7 @@ object FileHelper {
 
     /* Determine content type based on file extension */
     fun getContentTypeFromExtension(fileName: String): String {
-        LogHelper.i(TAG, "Deducing content type from file name: $fileName")
+        Log.i(TAG, "Deducing content type from file name: $fileName")
         if (fileName.endsWith("m3u", true)) return Keys.MIME_TYPE_M3U
         if (fileName.endsWith("pls", true)) return Keys.MIME_TYPE_PLS
         if (fileName.endsWith("png", true)) return Keys.MIME_TYPE_PNG
@@ -135,6 +135,17 @@ object FileHelper {
     }
 
 
+    /* Get an Uri for a given resource id */
+    fun getAndroidResourceUri(context: Context, resourceId: Int): Uri {
+        return Uri.Builder().apply {
+            scheme(ContentResolver.SCHEME_ANDROID_RESOURCE)
+            authority(context.resources.getResourcePackageName(resourceId))
+            appendPath(context.resources.getResourceTypeName(resourceId))
+            appendPath(context.resources.getResourceEntryName(resourceId))
+        }.build()
+    }
+
+
     /* Clears given folder - keeps given number of files */
     fun clearFolder(folder: File?, keep: Int, deleteFolder: Boolean = false) {
         if (folder != null && folder.exists()) {
@@ -153,23 +164,22 @@ object FileHelper {
     }
 
 
-
-    /* Creates a copy of a given uri from downloadmanager - goal is to provide stable Uris */
-    fun saveCopyOfFile(context: Context, stationUuid: String, tempFileUri: Uri, fileType: Int, fileName: String, async: Boolean = false): Uri {
-        val targetFile: File = File(context.getExternalFilesDir(determineDestinationFolderPath(fileType, stationUuid)), fileName)
-        if (targetFile.exists()) targetFile.delete()
-        when (async) {
-            true -> {
-                // copy file async (= fire & forget - no return value needed)
-                CoroutineScope(IO).launch { saveCopyOfFileSuspended(context, tempFileUri, targetFile.toUri()) }
-            }
-            false -> {
-                // copy file
-                copyFile(context, tempFileUri, targetFile.toUri(), deleteOriginal = true)
-            }
-        }
-        return targetFile.toUri()
-    }
+//    /* Creates a copy of a given uri from downloadmanager - goal is to provide stable Uris */
+//    fun saveCopyOfFile(context: Context, stationUuid: String, tempFileUri: Uri, fileType: Int, fileName: String, async: Boolean = false): Uri {
+//        val targetFile: File = File(context.getExternalFilesDir(determineDestinationFolderPath(fileType, stationUuid)), fileName)
+//        if (targetFile.exists()) targetFile.delete()
+//        when (async) {
+//            true -> {
+//                // copy file async (= fire & forget - no return value needed)
+//                CoroutineScope(IO).launch { saveCopyOfFileSuspended(context, tempFileUri, targetFile.toUri()) }
+//            }
+//            false -> {
+//                // copy file
+//                copyFile(context, tempFileUri, targetFile.toUri(), deleteOriginal = true)
+//            }
+//        }
+//        return targetFile.toUri()
+//    }
 
 
 
@@ -184,7 +194,7 @@ object FileHelper {
 
     /* Saves collection of radio stations as JSON text file */
     fun saveCollection(context: Context, collection: Collection, lastSave: Date) {
-        LogHelper.v(TAG, "Saving collection - Thread: ${Thread.currentThread().name}")
+        Log.v(TAG, "Saving collection - Thread: ${Thread.currentThread().name}")
         val collectionSize: Int = collection.stations.size
         // do not override an existing collection with an empty one - except when last station is deleted
         if (collectionSize > 0 || PreferencesHelper.loadCollectionSize() == 1) {
@@ -203,10 +213,10 @@ object FileHelper {
                 PreferencesHelper.saveCollectionModificationDate(lastSave)
                 PreferencesHelper.saveCollectionSize(collectionSize)
             } else {
-                LogHelper.w(TAG, "Not writing collection file. Reason: JSON string was completely empty.")
+                Log.w(TAG, "Not writing collection file. Reason: JSON string was completely empty.")
             }
         } else {
-            LogHelper.w(TAG, "Not saving collection. Reason: Trying to override an collection with more than one station")
+            Log.w(TAG, "Not saving collection. Reason: Trying to override an collection with more than one station")
         }
     }
 
@@ -219,7 +229,6 @@ object FileHelper {
         }
         return false
     }
-
 
 
     /* Reads m3u or pls playlists */
@@ -250,16 +259,16 @@ object FileHelper {
 
     /* Reads collection of radio stations from storage using GSON */
     fun readCollection(context: Context): Collection {
-        LogHelper.v(TAG, "Reading collection - Thread: ${Thread.currentThread().name}")
+        Log.v(TAG, "Reading collection - Thread: ${Thread.currentThread().name}")
         // get JSON from text file
-        val json: String = readTextFile(context, Keys.FOLDER_COLLECTION, Keys.COLLECTION_FILE)
+        val json: String = readTextFileFromFile(context, Keys.FOLDER_COLLECTION, Keys.COLLECTION_FILE)
         var collection: Collection = Collection()
-        when (json.isNotBlank()) {
+        if (json.isNotBlank()) {
             // convert JSON and return as collection
-            true -> try {
+            try {
                 collection = getCustomGson().fromJson(json, collection::class.java)
             } catch (e: Exception) {
-                LogHelper.e(TAG, "Error Reading collection.\nContent: $json")
+                Log.e(TAG, "Error Reading collection.\nContent: $json")
                 e.printStackTrace()
             }
         }
@@ -269,7 +278,7 @@ object FileHelper {
 
     /* Appends a message to an existing log - and saves it */
     fun saveLog(context: Context, logMessage: String) {
-        var log: String = readTextFile(context, Keys.FOLDER_COLLECTION, Keys.DEBUG_LOG_FILE)
+        var log: String = readTextFileFromFile(context, Keys.FOLDER_COLLECTION, Keys.DEBUG_LOG_FILE)
         log = "${log} {$logMessage}"
         writeTextFile(context, log, Keys.FOLDER_COLLECTION, Keys.DEBUG_LOG_FILE)
     }
@@ -286,7 +295,7 @@ object FileHelper {
     /* Checks if enough ( = more than 512mb) free space is available */
     fun enoughFreeSpaceAvailable(context: Context): Boolean {
         val usableSpace: Long = context.getExternalFilesDir(Keys.FOLDER_COLLECTION)?.usableSpace ?: 0L
-        LogHelper.e(TAG, "usableSpace: $usableSpace")
+        Log.e(TAG, "usableSpace: $usableSpace")
         return usableSpace > 512000000L
     }
 
@@ -303,39 +312,42 @@ object FileHelper {
     }
 
 
-
-    /* Suspend function: Wrapper for saveCollection */
-    suspend fun saveCollectionSuspended(context: Context, collection: Collection, lastUpdate: Date) {
-        return suspendCoroutine { cont ->
-            cont.resume(saveCollection(context, collection, lastUpdate))
-        }
+    /* Returns content:// Uri for given file:// path */
+    fun getContentUriForFile(context: Context, file: File): Uri {
+        return FileProvider.getUriForFile(context, "${context.applicationContext.packageName}.provider", file)
     }
 
 
-    /* Suspend function: Wrapper for readCollection */
-    suspend fun readCollectionSuspended(context: Context): Collection =
-        withContext(Dispatchers.IO) {
-            readCollection(context)
-        }
+//    /* Suspend function: Wrapper for saveCollection */
+//    suspend fun saveCollectionSuspended(context: Context, collection: Collection, lastUpdate: Date) {
+//        return suspendCoroutine { cont ->
+//            cont.resume(saveCollection(context, collection, lastUpdate))
+//        }
+//    }
 
 
-    /* Suspend function: Wrapper for copyFile */
-    suspend fun saveCopyOfFileSuspended(context: Context, originalFileUri: Uri, targetFileUri: Uri): Boolean {
-        return suspendCoroutine { cont ->
-            cont.resume(copyFile(context, originalFileUri, targetFileUri, deleteOriginal = true))
-        }
-    }
+//    /* Suspend function: Wrapper for readCollection */
+//    suspend fun readCollectionSuspended(context: Context): Collection =
+//        withContext(IO) {
+//            readCollection(context)
+//        }
 
 
-    /* Suspend function: Exports collection of stations as M3U file - local backup copy */
-    suspend fun backupCollectionAsM3uSuspended(context: Context, collection: Collection) {
-        return suspendCoroutine { cont ->
-            LogHelper.v(TAG, "Backing up collection as M3U - Thread: ${Thread.currentThread().name}")
+//    /* Suspend function: Wrapper for copyFile */
+//    suspend fun saveCopyOfFileSuspended(context: Context, originalFileUri: Uri, targetFileUri: Uri): Boolean {
+//        return suspendCoroutine { cont ->
+//            cont.resume(copyFile(context, originalFileUri, targetFileUri, deleteOriginal = true))
+//        }
+//    }
+
+
+    /* Exports collection of stations as M3U file - local backup copy */
+    fun backupCollectionAsM3u(context: Context, collection: Collection) {
+        Log.v(TAG, "Backing up collection as M3U - Thread: ${Thread.currentThread().name}")
             // create M3U string
             val m3uString: String = CollectionHelper.createM3uString(collection)
             // save M3U as text file
-            cont.resume(writeTextFile(context, m3uString, Keys.FOLDER_COLLECTION, Keys.COLLECTION_M3U_FILE))
-        }
+            writeTextFile(context, m3uString, Keys.FOLDER_COLLECTION, Keys.COLLECTION_M3U_FILE)
     }
 
 
@@ -349,7 +361,7 @@ object FileHelper {
                 inputStream.copyTo(outputStream)
             }
         } catch (exception: Exception) {
-            LogHelper.e(TAG, "Unable to copy file.")
+            Log.e(TAG, "Unable to copy file.")
             success = false
             exception.printStackTrace()
         }
@@ -358,7 +370,7 @@ object FileHelper {
                 // use contentResolver to handle files of type content://
                 context.contentResolver.delete(originalFileUri, null, null)
             } catch (e: Exception) {
-                LogHelper.e(TAG, "Unable to delete the original file. Stack trace: $e")
+                Log.e(TAG, "Unable to delete the original file. Stack trace: $e")
             }
         }
         return success
@@ -382,10 +394,10 @@ object FileHelper {
                 val noMediaOutStream: FileOutputStream = FileOutputStream(getNoMediaFile(folder))
                 noMediaOutStream.write(0)
             } else {
-                LogHelper.v(TAG, ".nomedia file exists already in given folder.")
+                Log.v(TAG, ".nomedia file exists already in given folder.")
             }
         } else  {
-            LogHelper.w(TAG, "Unable to create .nomedia file. Given folder is not valid.")
+            Log.w(TAG, "Unable to create .nomedia file. Given folder is not valid.")
         }
     }
 
@@ -395,7 +407,7 @@ object FileHelper {
         if (folder != null && folder.exists() && folder.isDirectory) {
             getNoMediaFile(folder).delete()
         } else  {
-            LogHelper.w(TAG, "Unable to delete .nomedia file. Given folder is not valid.")
+            Log.w(TAG, "Unable to delete .nomedia file. Given folder is not valid.")
         }
     }
 
@@ -426,7 +438,7 @@ object FileHelper {
 
 
     /* Reads InputStream from file uri and returns it as String */
-    private fun readTextFile(context: Context, folder: String, fileName: String): String {
+    private fun readTextFileFromFile(context: Context, folder: String, fileName: String): String {
         // todo read https://commonsware.com/blog/2016/03/15/how-consume-content-uri.html
         // https://developer.android.com/training/secure-file-sharing/retrieve-info
 
@@ -435,7 +447,7 @@ object FileHelper {
         if (!file.exists() || !file.canRead()) {
             return String()
         }
-        // readSuspended until last line reached
+        // read until last line reached
         val stream: InputStream = file.inputStream()
         val reader: BufferedReader = BufferedReader(InputStreamReader(stream))
         val builder: StringBuilder = StringBuilder()
@@ -447,12 +459,36 @@ object FileHelper {
     }
 
 
+    /* Reads InputStream from content uri and returns it as List of String */
+    fun readTextFileFromContentUri(context: Context, contentUri: Uri): List<String> {
+        val lines: MutableList<String> = mutableListOf()
+        try {
+            // open input stream from content URI
+            val inputStream: InputStream? = context.contentResolver.openInputStream(contentUri)
+            if (inputStream != null) {
+                val reader: InputStreamReader = inputStream.reader()
+                var index: Int = 0
+                reader.forEachLine {
+                    index += 1
+                    if (index < 256)
+                    lines.add(it)
+                }
+                inputStream.close()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        return lines
+    }
+
+
+
     /* Writes given text to file on storage */
     private fun writeTextFile(context: Context, text: String, folder: String, fileName: String) {
         if (text.isNotBlank()) {
             File(context.getExternalFilesDir(folder), fileName).writeText(text)
         } else {
-            LogHelper.w(TAG, "Writing text file $fileName failed. Empty text string text was provided.")
+            Log.w(TAG, "Writing text file $fileName failed. Empty text string text was provided.")
         }
     }
 
@@ -464,10 +500,17 @@ object FileHelper {
             val outputStream: OutputStream? = resolver.openOutputStream(destinationUri)
             outputStream?.write(text.toByteArray(Charsets.UTF_8))
         } else {
-            LogHelper.w(TAG, "Writing text file $destinationUri failed. Empty text string text was provided.")
+            Log.w(TAG, "Writing text file $destinationUri failed. Empty text string text was provided.")
         }
     }
 
+
+    /* Todo replace with something more nice */
+    fun getShareableImageUri(context: Context, imageUriString: String): Uri {
+        val imageFileString = imageUriString.substring(imageUriString.indexOf("/files/images/") + 13)
+        val imageFile: File = File(context.getExternalFilesDir(Keys.FOLDER_IMAGES), imageFileString)
+        return FileProvider.getUriForFile(context, "${context.applicationContext.packageName}.provider", imageFile)
+    }
 
 
     /* Writes given bitmap as image file to storage */
@@ -482,6 +525,7 @@ object FileHelper {
             e.printStackTrace()
         }
     }
+
 
     /* Checks the size of the collection folder */
     fun getCollectionFolderSize(context: Context): Int {

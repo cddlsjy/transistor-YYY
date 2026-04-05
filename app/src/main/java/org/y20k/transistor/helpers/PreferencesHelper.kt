@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -16,14 +16,14 @@ package org.y20k.transistor.helpers
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import androidx.core.content.edit
 import androidx.preference.PreferenceManager
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.gson.Gson
 import org.y20k.transistor.Keys
 import org.y20k.transistor.ui.PlayerState
-import java.util.*
+import java.util.Calendar
+import java.util.Date
 
 
 /*
@@ -40,7 +40,7 @@ object PreferencesHelper {
     }
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(PreferencesHelper::class.java)
+    private val TAG: String = PreferencesHelper::class.java.simpleName
 
 
     /* Loads address of radio-browser.info API from shared preferences */
@@ -71,30 +71,10 @@ object PreferencesHelper {
     }
 
 
-    /* Loads state of playback for player / PlayerService from shared preferences */
-    fun loadPlayerPlaybackState(): Int {
-        return sharedPreferences.getInt(Keys.PREF_CURRENT_PLAYBACK_STATE, PlaybackStateCompat.STATE_STOPPED)
-    }
-
-
-    /* Saves state of playback for player / PlayerService to shared preferences */
-    fun savePlayerPlaybackState(playbackState: Int) {
+    /* Saves state of playback for player to shared preferences */
+    fun saveIsPlaying(isPlaying: Boolean) {
         sharedPreferences.edit {
-            putInt(Keys.PREF_CURRENT_PLAYBACK_STATE, playbackState)
-        }
-    }
-
-
-    /* Loads state of playback for player / PlayerService from shared preferences */
-    fun loadPlayerPlaybackSpeed(): Float {
-        return sharedPreferences.getFloat(Keys.PREF_PLAYER_STATE_PLAYBACK_SPEED, 1f)
-    }
-
-
-    /* Saves state of playback for player / PlayerService to shared preferences */
-    fun savePlayerPlaybackSpeed(playbackSpeed: Float) {
-        sharedPreferences.edit {
-            putFloat(Keys.PREF_PLAYER_STATE_PLAYBACK_SPEED, playbackSpeed)
+            putBoolean(Keys.PREF_PLAYER_STATE_IS_PLAYING, isPlaying)
         }
     }
 
@@ -141,6 +121,13 @@ object PreferencesHelper {
         }
     }
 
+    /* Saves state of sleep timer to shared preferences */
+    fun saveSleepTimerRunning(isRunning: Boolean) {
+        sharedPreferences.edit {
+            putBoolean(Keys.PREF_PLAYER_STATE_SLEEP_TIMER_RUNNING, isRunning)
+        }
+    }
+
 
     /* Loads date of last save operation from shared preferences */
     fun loadCollectionModificationDate(): Date {
@@ -160,7 +147,7 @@ object PreferencesHelper {
     /* Loads active downloads from shared preferences */
     fun loadActiveDownloads(): String {
         val activeDownloadsString: String = sharedPreferences.getString(Keys.PREF_ACTIVE_DOWNLOADS, Keys.ACTIVE_DOWNLOADS_EMPTY) ?: Keys.ACTIVE_DOWNLOADS_EMPTY
-        LogHelper.v(TAG, "IDs of active downloads: $activeDownloadsString")
+        Log.v(TAG, "IDs of active downloads: $activeDownloadsString")
         return activeDownloadsString
     }
 
@@ -176,10 +163,9 @@ object PreferencesHelper {
     /* Loads state of player user interface from shared preferences */
     fun loadPlayerState(): PlayerState {
         return PlayerState().apply {
-            stationUuid = sharedPreferences.getString(Keys.PREF_PLAYER_STATE_STATION_UUID, String()) ?: String()
-            playbackState = sharedPreferences.getInt(Keys.PREF_PLAYER_STATE_PLAYBACK_STATE, PlaybackStateCompat.STATE_STOPPED)
-            bottomSheetState = sharedPreferences.getInt(Keys.PREF_PLAYER_STATE_BOTTOM_SHEET_STATE, BottomSheetBehavior.STATE_HIDDEN)
-            sleepTimerState = sharedPreferences.getInt(Keys.PREF_PLAYER_STATE_SLEEP_TIMER_STATE, Keys.STATE_SLEEP_TIMER_STOPPED)
+            stationPosition = sharedPreferences.getInt(Keys.PREF_PLAYER_STATE_STATION_POSITION, -1)
+            isPlaying = sharedPreferences.getBoolean(Keys.PREF_PLAYER_STATE_IS_PLAYING, false)
+            sleepTimerRunning = sharedPreferences.getBoolean(Keys.PREF_PLAYER_STATE_SLEEP_TIMER_RUNNING, false)
         }
     }
 
@@ -187,11 +173,32 @@ object PreferencesHelper {
     /* Saves state of player user interface to shared preferences */
     fun savePlayerState(playerState: PlayerState) {
         sharedPreferences.edit {
+            putInt(Keys.PREF_PLAYER_STATE_STATION_POSITION, playerState.stationPosition)
             putString(Keys.PREF_PLAYER_STATE_STATION_UUID, playerState.stationUuid)
-            putInt(Keys.PREF_PLAYER_STATE_PLAYBACK_STATE, playerState.playbackState)
-            putInt(Keys.PREF_PLAYER_STATE_BOTTOM_SHEET_STATE, playerState.bottomSheetState)
-            putInt(Keys.PREF_PLAYER_STATE_SLEEP_TIMER_STATE, playerState.sleepTimerState)
+            putBoolean(Keys.PREF_PLAYER_STATE_IS_PLAYING, playerState.isPlaying)
         }
+    }
+
+
+    /* Saves Uuid if currently playing station to shared preferences */
+    fun saveCurrentStationPosition(position: Int) {
+        sharedPreferences.edit {
+            putInt(Keys.PREF_PLAYER_STATE_STATION_POSITION, position)
+        }
+    }
+
+
+    /* Saves Uuid if currently playing station to shared preferences */
+    fun saveCurrentStationId(stationUuid: String) {
+        sharedPreferences.edit {
+            putString(Keys.PREF_PLAYER_STATE_STATION_UUID, stationUuid)
+        }
+    }
+
+
+    /* Loads uuid of last played station from shared preferences */
+    fun loadLastPlayedStationPosition(): Int {
+        return sharedPreferences.getInt(Keys.PREF_PLAYER_STATE_STATION_POSITION, -1)
     }
 
 
@@ -275,10 +282,45 @@ object PreferencesHelper {
     }
 
 
+    /* Loads value of the option: Tap Anywhere */
+    fun loadTapAnyWherePlayback(): Boolean {
+        return sharedPreferences.getBoolean(Keys.PREF_TAP_ANYWHERE_PLAYBACK, false)
+    }
+
+
+    /* Loads value of the option: Buffer Size */
+    fun loadLargeBufferSize(): Boolean {
+        return sharedPreferences.getBoolean(Keys.PREF_LARGE_BUFFER_SIZE, false)
+    }
+
+
+    /* Loads a multiplier value for constructing the load control */
+    fun loadBufferSizeMultiplier(): Int {
+        if (sharedPreferences.getBoolean(Keys.PREF_LARGE_BUFFER_SIZE, false)) {
+            return Keys.LARGE_BUFFER_SIZE_MULTIPLIER
+        } else {
+            return 1
+        }
+    }
+
 
     /* Return whether to download over mobile */
     fun downloadOverMobile(): Boolean {
         return sharedPreferences.getBoolean(Keys.PREF_DOWNLOAD_OVER_MOBILE, Keys.DEFAULT_DOWNLOAD_OVER_MOBILE)
+    }
+
+
+    /* Loads auto play last station setting */
+    fun loadAutoPlayLastStation(): Boolean {
+        return sharedPreferences.getBoolean(Keys.PREF_AUTO_PLAY_LAST_STATION, false)
+    }
+
+
+    /* Saves auto play last station setting */
+    fun saveAutoPlayLastStation(enabled: Boolean) {
+        sharedPreferences.edit {
+            putBoolean(Keys.PREF_AUTO_PLAY_LAST_STATION, enabled)
+        }
     }
 
 }

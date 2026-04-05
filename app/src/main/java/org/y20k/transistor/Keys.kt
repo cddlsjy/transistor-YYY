@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -14,7 +14,7 @@
 
 package org.y20k.transistor
 
-import java.util.*
+import java.util.Date
 
 
 /*
@@ -33,6 +33,7 @@ object Keys {
     const val MINIMUM_TIME_BETWEEN_UPDATES: Long = 180000L  // 3 minutes in milliseconds
     const val SLEEP_TIMER_DURATION: Long = 900000L          // 15 minutes in  milliseconds
     const val SLEEP_TIMER_INTERVAL: Long = 1000L            // 1 second in milliseconds
+    const val RECONNECTION_WAIT_INTERVAL: Long = 500L       // 5 seconds in milliseconds
 
     // ranges
     val PLAYBACK_SPEEDS = arrayOf(1.0f, 1.2f, 1.4f, 1.6f, 1.8f, 2.0f)
@@ -43,7 +44,6 @@ object Keys {
 
     // intent actions
     const val ACTION_SHOW_PLAYER: String = "org.y20k.transistor.action.SHOW_PLAYER"
-    const val ACTION_START_PLAYER_SERVICE: String = "org.y20k.transistor.action.START_PLAYER_SERVICE"
     const val ACTION_COLLECTION_CHANGED: String = "org.y20k.transistor.action.COLLECTION_CHANGED"
     const val ACTION_START: String = "org.y20k.transistor.action.START"
     const val ACTION_STOP: String = "org.y20k.transistor.action.STOP"
@@ -53,6 +53,9 @@ object Keys {
     const val EXTRA_STATION_UUID: String = "STATION_UUID"
     const val EXTRA_STREAM_URI: String = "STREAM_URI"
     const val EXTRA_START_LAST_PLAYED_STATION: String = "START_LAST_PLAYED_STATION"
+    const val EXTRA_SLEEP_TIMER_RUNNING: String = "SLEEP_TIMER_RUNNING"
+    const val EXTRA_SLEEP_TIMER_REMAINING: String = "SLEEP_TIMER_REMAINING"
+    const val EXTRA_METADATA_HISTORY: String = "METADATA_HISTORY"
 
     // arguments
     const val ARG_UPDATE_COLLECTION: String = "ArgUpdateCollection"
@@ -63,49 +66,56 @@ object Keys {
     const val KEY_DOWNLOAD_WORK_REQUEST: String = "DOWNLOAD_WORK_REQUEST"
     const val KEY_SAVE_INSTANCE_STATE_STATION_LIST: String = "SAVE_INSTANCE_STATE_STATION_LIST"
     const val KEY_STREAM_URI: String = "STREAM_URI"
+    const val KEY_ORIGINAL_ARTWORK_URI = "ORIGINAL_ARTWORK_URI"
 
     // custom MediaController commands
     const val CMD_RELOAD_PLAYER_STATE: String = "RELOAD_PLAYER_STATE"
     const val CMD_REQUEST_PROGRESS_UPDATE: String = "REQUEST_PROGRESS_UPDATE"
+    const val CMD_CANCEL_NOTIFICATION = "CANCEL_NOTIFICATION"
     const val CMD_START_SLEEP_TIMER: String = "START_SLEEP_TIMER"
     const val CMD_CANCEL_SLEEP_TIMER: String = "CANCEL_SLEEP_TIMER"
+    const val CMD_REQUEST_SLEEP_TIMER_REMAINING: String = "REQUEST_SLEEP_TIMER_REMAINING"
+    const val CMD_REQUEST_SLEEP_TIMER_RUNNING: String = "REQUEST_SLEEP_TIMER_RUNNING"
+    const val CMD_REQUEST_METADATA_HISTORY: String = "REQUEST_METADATA_HISTORY"
     const val CMD_PLAY_STREAM: String = "PLAY_STREAM"
 
     // preferences
     const val PREF_RADIO_BROWSER_API: String = "RADIO_BROWSER_API"
-    const val PREF_ONE_TIME_HOUSEKEEPING_NECESSARY: String = "ONE_TIME_HOUSEKEEPING_NECESSARY_VERSIONCODE_72" // increment to current app version code to trigger housekeeping that runs only once
+    const val PREF_ONE_TIME_HOUSEKEEPING_NECESSARY: String = "ONE_TIME_HOUSEKEEPING_NECESSARY_VERSIONCODE_95" // increment to current app version code to trigger housekeeping that runs only once
     const val PREF_THEME_SELECTION: String= "THEME_SELECTION"
     const val PREF_LAST_UPDATE_COLLECTION: String = "LAST_UPDATE_COLLECTION"
     const val PREF_COLLECTION_SIZE: String = "COLLECTION_SIZE"
     const val PREF_COLLECTION_MODIFICATION_DATE: String = "COLLECTION_MODIFICATION_DATE"
-    const val PREF_CURRENT_PLAYBACK_STATE: String = "CURRENT_PLAYBACK_STATE"
+    const val PREF_CURRENT_IS_PLAYING_STATE: String = "CURRENT_IS_PLAYING_STATE"
     const val PREF_ACTIVE_DOWNLOADS: String = "ACTIVE_DOWNLOADS"
     const val PREF_DOWNLOAD_OVER_MOBILE: String = "DOWNLOAD_OVER_MOBILE"
     const val PREF_KEEP_DEBUG_LOG: String = "KEEP_DEBUG_LOG"
     const val PREF_STATION_LIST_EXPANDED_UUID = "STATION_LIST_EXPANDED_UUID"
+    const val PREF_PLAYER_STATE_STATION_POSITION: String = "PLAYER_STATE_STATION_POSITION"
     const val PREF_PLAYER_STATE_STATION_UUID: String = "PLAYER_STATE_STATION_UUID"
-    const val PREF_PLAYER_STATE_PLAYBACK_STATE: String = "PLAYER_STATE_PLAYBACK_STATE"
+    const val PREF_PLAYER_STATE_IS_PLAYING: String = "PLAYER_STATE_IS_PLAYING"
     const val PREF_PLAYER_STATE_PLAYBACK_SPEED: String = "PLAYER_STATE_PLAYBACK_SPEED"
     const val PREF_PLAYER_STATE_BOTTOM_SHEET_STATE: String = "PLAYER_STATE_BOTTOM_SHEET_STATE"
     const val PREF_PLAYER_STATE_SLEEP_TIMER_STATE: String = "PLAYER_STATE_SLEEP_TIMER_STATE"
     const val PREF_PLAYER_METADATA_HISTORY: String = "PLAYER_METADATA_HISTORY"
+    const val PREF_PLAYER_STATE_SLEEP_TIMER_RUNNING: String = "PLAYER_STATE_SLEEP_TIMER_RUNNING"
+    const val PREF_TAP_ANYWHERE_PLAYBACK: String = "TAP_ANYWHERE_PLAYBACK"
+    const val PREF_LARGE_BUFFER_SIZE: String = "LARGE_BUFFER_SIZE"
     const val PREF_EDIT_STATIONS: String = "EDIT_STATIONS"
     const val PREF_EDIT_STREAMS_URIS: String = "EDIT_STREAMS_URIS"
+    const val PREF_AUTO_PLAY_LAST_STATION: String = "AUTO_PLAY_LAST_STATION"
 
 
     // states
     const val STATE_SLEEP_TIMER_STOPPED: Int = 0
-
-    // connection types
-    const val CONNECTION_TYPE_HLS = 1
-    const val CONNECTION_TYPE_OTHER = 2
-    const val CONNECTION_TYPE_ERROR = 3
 
     // default const values
     const val DEFAULT_SIZE_OF_METADATA_HISTORY: Int = 25
     const val DEFAULT_MAX_LENGTH_OF_METADATA_ENTRY: Int = 127
     const val DEFAULT_DOWNLOAD_OVER_MOBILE: Boolean = false
     const val ACTIVE_DOWNLOADS_EMPTY: String = "zero"
+    const val DEFAULT_MAX_RECONNECTION_COUNT: Int = 20
+    const val LARGE_BUFFER_SIZE_MULTIPLIER: Int = 8
 
     // media browser
     const val MEDIA_BROWSER_ROOT = "__ROOT__"
@@ -157,10 +167,10 @@ object Keys {
     const val MIME_TYPE_ZIP = "application/zip"
     const val MIME_TYPE_OCTET_STREAM = "application/octet-stream"
     const val MIME_TYPE_UNSUPPORTED = "unsupported"
-    val MIME_TYPES_M3U = arrayOf("audio/mpegurl", "audio/x-mpegurl", "application/mpegurl", "application/x-mpegurl")
+    val MIME_TYPES_M3U = arrayOf("application/mpegurl", "application/x-mpegurl", "audio/mpegurl", "audio/x-mpegurl")
     val MIME_TYPES_PLS = arrayOf("audio/x-scpls", "application/pls+xml")
-    val MIME_TYPES_HLS = arrayOf("application/vnd.apple.mpegurl", "application/x-mpegURL")
-    val MIME_TYPES_MPEG = arrayOf("audio/mpeg", "audio/mp3")
+    val MIME_TYPES_HLS = arrayOf("application/vnd.apple.mpegurl", "application/vnd.apple.mpegurl.audio")
+    val MIME_TYPES_MPEG = arrayOf("audio/mpeg")
     val MIME_TYPES_OGG = arrayOf("audio/ogg", "application/ogg", "audio/opus")
     val MIME_TYPES_AAC = arrayOf("audio/aac", "audio/aacp")
     val MIME_TYPES_IMAGE = arrayOf("image/png", "image/jpeg")
@@ -187,8 +197,13 @@ object Keys {
     const val RADIO_BROWSER_API_BASE: String = "all.api.radio-browser.info"
     const val RADIO_BROWSER_API_DEFAULT: String = "de1.api.radio-browser.info"
 
+    // web browser user agent
+    val WEB_BROWSER_USER_AGENT_REQUIRED: Array<String> = arrayOf("live365.com")
+    const val WEB_BROWSER_USER_AGENT: String = "Mozilla/5.0 (Linux; Android 13; SM-G998B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Mobile Safari/537.36"
+
     // locations
     const val LOCATION_DEFAULT_STATION_IMAGE: String = "android.resource://org.y20k.transistor/drawable/ic_default_station_image_24dp"
+    const val LOCATION_RESOURCES: String = "android.resource://org.y20k.transistor/"
 
     // sizes (in dp)
     const val SIZE_COVER_NOTIFICATION_LARGE_ICON: Int = 256

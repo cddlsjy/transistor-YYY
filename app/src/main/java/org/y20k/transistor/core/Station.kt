@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -15,12 +15,14 @@
 package org.y20k.transistor.core
 
 import android.os.Parcelable
-import android.support.v4.media.session.PlaybackStateCompat
 import androidx.annotation.Keep
+import androidx.media3.common.MimeTypes
 import com.google.gson.annotations.Expose
+import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import org.y20k.transistor.Keys
-import java.util.*
+import java.util.Date
+import java.util.UUID
 
 
 /*
@@ -36,16 +38,22 @@ data class Station (@Expose val uuid: String = UUID.randomUUID().toString(),
                     @Expose var stream: Int = 0,
                     @Expose var streamContent: String = Keys.MIME_TYPE_UNSUPPORTED,
                     @Expose var homepage: String = String(),
-                    @Expose var image: String = Keys.LOCATION_DEFAULT_STATION_IMAGE,
-                    @Expose var smallImage: String = Keys.LOCATION_DEFAULT_STATION_IMAGE,
+                    @Expose var image: String = String(),
+                    @Expose var smallImage: String = String(),
                     @Expose var imageColor: Int = -1,
                     @Expose var imageManuallySet: Boolean = false,
                     @Expose var remoteImageLocation: String = String(),
                     @Expose var remoteStationLocation: String = String(),
                     @Expose var modificationDate: Date = Keys.DEFAULT_DATE,
-                    @Expose var playbackState: Int = PlaybackStateCompat.STATE_STOPPED,
+                    @Expose var isPlaying: Boolean = false,
                     @Expose var radioBrowserStationUuid: String = String(),
+                    @Expose var codec: String = String(),
+                    @Expose var bitrate: Int = 0,
                     @Expose var radioBrowserChangeUuid: String = String()): Parcelable {
+
+    /* Define log tag */
+    @IgnoredOnParcel
+    private val TAG: String = Station::class.java.simpleName
 
 
     /* overrides toString method */
@@ -54,6 +62,7 @@ data class Station (@Expose val uuid: String = UUID.randomUUID().toString(),
         stringBuilder.append("Name: ${name}\n")
         if (streamUris.isNotEmpty()) stringBuilder.append("Stream: ${streamUris[stream]}\n")
         stringBuilder.append("Last Update: ${modificationDate}\n")
+        stringBuilder.append("Content-Type: ${streamContent}\n")
         return stringBuilder.toString()
     }
 
@@ -74,6 +83,20 @@ data class Station (@Expose val uuid: String = UUID.randomUUID().toString(),
     }
 
 
+    /* Get the correct Mime type - used for building a MediaItem  */
+    fun getMediaType(): String {
+        if (Keys.MIME_TYPES_MPEG.contains(streamContent)) {
+            return MimeTypes.AUDIO_MPEG
+        } else if (Keys.MIME_TYPES_AAC.contains(streamContent)) {
+            return MimeTypes.AUDIO_AAC
+        } else if (Keys.MIME_TYPES_HLS.contains(streamContent)) {
+            return MimeTypes.APPLICATION_M3U8
+        } else {
+            return MimeTypes.AUDIO_UNKNOWN
+        }
+    }
+
+
     /* Creates a deep copy of a Station */
     fun deepCopy(): Station {
         return Station(uuid = uuid,
@@ -91,8 +114,10 @@ data class Station (@Expose val uuid: String = UUID.randomUUID().toString(),
                        remoteImageLocation = remoteImageLocation,
                        remoteStationLocation = remoteStationLocation,
                        modificationDate = modificationDate,
-                       playbackState = playbackState,
+                       isPlaying = isPlaying,
                        radioBrowserStationUuid = radioBrowserStationUuid,
-                       radioBrowserChangeUuid = radioBrowserChangeUuid)
+                       radioBrowserChangeUuid = radioBrowserChangeUuid,
+                       codec = codec,
+                       bitrate = bitrate)
     }
 }

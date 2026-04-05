@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -17,15 +17,25 @@ package org.y20k.transistor.ui
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.support.v4.media.session.PlaybackStateCompat
+import android.graphics.drawable.AnimatedVectorDrawable
+import android.os.Build
 import android.view.View
-import android.view.animation.Animation
-import android.view.animation.AnimationUtils
-import android.widget.*
+import android.widget.ImageButton
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.Group
+import androidx.coordinatorlayout.widget.CoordinatorLayout
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
+import androidx.core.view.updateLayoutParams
+import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.DefaultItemAnimator
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -33,7 +43,9 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import org.y20k.transistor.Keys
 import org.y20k.transistor.R
 import org.y20k.transistor.core.Station
-import org.y20k.transistor.helpers.*
+import org.y20k.transistor.helpers.DateTimeHelper
+import org.y20k.transistor.helpers.ImageHelper
+import org.y20k.transistor.helpers.PreferencesHelper
 
 
 /*
@@ -42,10 +54,12 @@ import org.y20k.transistor.helpers.*
 data class LayoutHolder(var rootView: View) {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(LayoutHolder::class.java)
+    private val TAG: String = LayoutHolder::class.java.simpleName
 
 
     /* Main class variables */
+    private lateinit var systemBars: Insets
+    private var playerFragment: LinearLayout
     var recyclerView: RecyclerView
     val layoutManager: LinearLayoutManager
     var bottomSheet: ConstraintLayout
@@ -61,10 +75,11 @@ data class LayoutHolder(var rootView: View) {
     private var sheetStreamingLinkView: TextView
     private var sheetMetadataHistoryHeadline: TextView
     private var sheetMetadataHistoryView: TextView
-    var sheetNextMetadataView: ImageView
-    var sheetPreviousMetadataView: ImageView
-    var sheetSleepTimerStartButtonView: ImageView
-    var sheetSleepTimerCancelButtonView: ImageView
+    var sheetNextMetadataView: ImageButton
+    var sheetPreviousMetadataView: ImageButton
+    var sheetCopyMetadataButtonView: ImageButton
+    var sheetSleepTimerStartButtonView: ImageButton
+    var sheetSleepTimerCancelButtonView: ImageButton
     private var sheetSleepTimerRemainingTimeView: TextView
     private var onboardingLayout: ConstraintLayout
     private var onboardingQuoteViews: Group
@@ -72,11 +87,13 @@ data class LayoutHolder(var rootView: View) {
     private var bottomSheetBehavior: BottomSheetBehavior<ConstraintLayout>
     private var metadataHistory: MutableList<String>
     private var metadataHistoryPosition: Int
+    private var isBuffering: Boolean
 
 
     /* Init block */
     init {
         // find views
+        playerFragment = rootView.findViewById(R.id.player_fragment)
         recyclerView = rootView.findViewById(R.id.station_list)
         bottomSheet = rootView.findViewById(R.id.bottom_sheet)
         //sheetMetadataViews = rootView.findViewById(R.id.sheet_metadata_views)
@@ -93,15 +110,19 @@ data class LayoutHolder(var rootView: View) {
         sheetMetadataHistoryView = rootView.findViewById(R.id.sheet_metadata_history)
         sheetNextMetadataView = rootView.findViewById(R.id.sheet_next_metadata_button)
         sheetPreviousMetadataView = rootView.findViewById(R.id.sheet_previous_metadata_button)
+        sheetCopyMetadataButtonView = rootView.findViewById(R.id.copy_station_metadata_button)
         sheetSleepTimerStartButtonView = rootView.findViewById(R.id.sleep_timer_start_button)
         sheetSleepTimerCancelButtonView = rootView.findViewById(R.id.sleep_timer_cancel_button)
         sheetSleepTimerRemainingTimeView = rootView.findViewById(R.id.sleep_timer_remaining_time)
         onboardingLayout = rootView.findViewById(R.id.onboarding_layout)
         onboardingQuoteViews = rootView.findViewById(R.id.onboarding_quote_views)
         onboardingImportViews = rootView.findViewById(R.id.onboarding_import_views)
+
+        // set up variables
         bottomSheetBehavior = BottomSheetBehavior.from(bottomSheet)
         metadataHistory = PreferencesHelper.loadMetadataHistory()
         metadataHistoryPosition = metadataHistory.size - 1
+        isBuffering = false
 
         // set up RecyclerView
         layoutManager = CustomLayoutManager(rootView.context)
@@ -138,26 +159,22 @@ data class LayoutHolder(var rootView: View) {
             return@setOnLongClickListener true
         }
 
+        // set up edge to edge display
+        setupEdgeToEdge()
+
         // set layout for player
         setupBottomSheet()
     }
 
 
     /* Updates the player views */
-    fun updatePlayerViews(context: Context, station: Station, playbackState: Int) {
+    fun updatePlayerViews(context: Context, station: Station, isPlaying: Boolean) {
 
         // set default metadata views, when playback has stopped
-        if (playbackState != PlaybackStateCompat.STATE_PLAYING) {
+        if (!isPlaying) {
             metadataView.text = station.name
             sheetMetadataHistoryView.text = station.name
-            sheetMetadataHistoryView.isSelected = true
-        }
-
-        // toggle buffering indicator
-        if (playbackState == PlaybackStateCompat.STATE_BUFFERING) {
-            bufferingIndicator.isVisible = true
-        } else {
-            bufferingIndicator.isVisible = false
+//            sheetMetadataHistoryView.isSelected = true
         }
 
         // update name
@@ -178,6 +195,7 @@ data class LayoutHolder(var rootView: View) {
         sheetStreamingLinkView.setOnClickListener{ copyToClipboard(context, sheetStreamingLinkView.text) }
         sheetMetadataHistoryHeadline.setOnClickListener { copyToClipboard(context, sheetMetadataHistoryView.text) }
         sheetMetadataHistoryView.setOnClickListener { copyToClipboard(context, sheetMetadataHistoryView.text) }
+        sheetCopyMetadataButtonView.setOnClickListener { copyToClipboard(context, sheetMetadataHistoryView.text) }
 
     }
 
@@ -187,7 +205,10 @@ data class LayoutHolder(var rootView: View) {
         val clip: ClipData = ClipData.newPlainText("simple text", clipString)
         val cm: ClipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         cm.setPrimaryClip(clip)
-        Toast.makeText(context, R.string.toastmessage_copied_to_clipboard, Toast.LENGTH_LONG).show()
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU){
+            // since API 33 (TIRAMISU) the OS displays its own notification when content is copied to the clipboard
+            Toast.makeText(context, R.string.toast_message_copied_to_clipboard, Toast.LENGTH_LONG).show()
+        }
     }
 
 
@@ -201,8 +222,8 @@ data class LayoutHolder(var rootView: View) {
 
 
     /* Updates the metadata views */
-    fun updateMetadata(metadataHistoryList: MutableList<String>, stationName: String, playbackState: Int) {
-        if (metadataHistoryList.isNotEmpty()) {
+    fun updateMetadata(metadataHistoryList: MutableList<String>?) {
+        if (!metadataHistoryList.isNullOrEmpty()) {
             metadataHistory = metadataHistoryList
             if (metadataHistory.last() != metadataView.text) {
                 metadataHistoryPosition = metadataHistory.size - 1
@@ -231,15 +252,21 @@ data class LayoutHolder(var rootView: View) {
 
 
     /* Toggles play/pause button */
-    fun togglePlayButton(playbackState: Int) {
-        when (playbackState) {
-            PlaybackStateCompat.STATE_PLAYING -> {
-                playButtonView.setImageResource(R.drawable.ic_player_stop_symbol_36dp)
-            }
-            else -> {
-                playButtonView.setImageResource(R.drawable.ic_player_play_symbol_36dp)
-            }
+    fun togglePlayButton(isPlaying: Boolean) {
+        if (isPlaying) {
+            playButtonView.setImageResource(R.drawable.ic_player_stop_symbol_48dp)
+            // bufferingIndicator.isVisible = false
+        } else {
+            playButtonView.setImageResource(R.drawable.ic_player_play_symbol_48dp)
+            // bufferingIndicator.isVisible = isBuffering
         }
+    }
+
+
+    /* Toggles buffering indicator */
+    fun showBufferingIndicator(buffering: Boolean) {
+        bufferingIndicator.isVisible = buffering
+        isBuffering = buffering
     }
 
 
@@ -289,63 +316,60 @@ data class LayoutHolder(var rootView: View) {
     }
 
 
-
     /* Initiates the rotation animation of the play button  */
-    fun animatePlaybackButtonStateTransition(context: Context, playbackState: Int) {
-        when (playbackState) {
-            PlaybackStateCompat.STATE_PLAYING -> {
-                val rotateClockwise = AnimationUtils.loadAnimation(context, R.anim.rotate_clockwise_slow)
-                rotateClockwise.setAnimationListener(createAnimationListener(playbackState))
-                playButtonView.startAnimation(rotateClockwise)
+    fun animatePlaybackButtonStateTransition(context: Context, isPlaying: Boolean) {
+        try {
+            when (isPlaying) {
+                true -> {
+                    // rotate and morph to stop icon
+                    playButtonView.setImageResource(R.drawable.anim_play_to_stop_48dp)
+                    val drawable = playButtonView.drawable
+                    if (drawable is AnimatedVectorDrawable) {
+                        drawable.start()
+                    }
+                }
+                false -> {
+                    // rotate and morph to play icon
+                    playButtonView.setImageResource(R.drawable.anim_stop_to_play_48dp)
+                    val drawable = playButtonView.drawable
+                    if (drawable is AnimatedVectorDrawable) {
+                        drawable.start()
+                    }
+                }
             }
-
-            else -> {
-                val rotateCounterClockwise = AnimationUtils.loadAnimation(context, R.anim.rotate_counterclockwise_fast)
-                rotateCounterClockwise.setAnimationListener(createAnimationListener(playbackState))
-                playButtonView.startAnimation(rotateCounterClockwise)
-            }
-
+        } catch (e: Exception) {
+            // ignore exception to prevent crash
         }
     }
 
 
     /* Shows player */
-    private fun showPlayer(context: Context): Boolean {
-        UiHelper.setViewMargins(context, recyclerView, 0,0,0, Keys.BOTTOM_SHEET_PEEK_HEIGHT)
-        if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_HIDDEN && onboardingLayout.visibility == View.GONE) {
+    fun showPlayer(context: Context): Boolean {
+        toggleListPadding(false)
+        if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_HIDDEN || bottomSheetBehavior.state == BottomSheetBehavior.STATE_SETTLING) {
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
+            bottomSheet.postDelayed({bottomSheetBehavior.isHideable = false}, 50) // disable hiding again - give the bottom sheet time to settle
         }
         return true
     }
 
 
     /* Hides player */
-    private fun hidePlayer(context: Context): Boolean {
-        UiHelper.setViewMargins(context, recyclerView, 0,0,0, 0)
+    fun hidePlayer(context: Context): Boolean {
+        toggleListPadding(true)
+        bottomSheetBehavior.isHideable = true // temporarily allow hiding
         bottomSheetBehavior.state = BottomSheetBehavior.STATE_HIDDEN
         return true
     }
 
 
-    fun minimizePlayerIfExpanded(context: Context): Boolean {
+    /* Minimizes player sheet if expanded */
+    fun minimizePlayerIfExpanded(): Boolean {
         return if (bottomSheetBehavior.state == BottomSheetBehavior.STATE_EXPANDED) {
             bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
             true
         } else {
             false
-        }
-    }
-
-
-    /* Creates AnimationListener for play button */
-    private fun createAnimationListener(playbackState: Int): Animation.AnimationListener {
-        return object : Animation.AnimationListener {
-            override fun onAnimationStart(animation: Animation) {}
-            override fun onAnimationEnd(animation: Animation) {
-                // set up button symbol and playback indicator afterwards
-                togglePlayButton(playbackState)
-            }
-            override fun onAnimationRepeat(animation: Animation) {}
         }
     }
 
@@ -372,7 +396,7 @@ data class LayoutHolder(var rootView: View) {
                     BottomSheetBehavior.STATE_EXPANDED -> Unit // do nothing
                     BottomSheetBehavior.STATE_HALF_EXPANDED ->  Unit // do nothing
                     BottomSheetBehavior.STATE_SETTLING -> Unit // do nothing
-                    BottomSheetBehavior.STATE_HIDDEN -> showPlayer(rootView.context)
+                    BottomSheetBehavior.STATE_HIDDEN -> Unit // do nothing
                 }
             }
         })
@@ -391,6 +415,48 @@ data class LayoutHolder(var rootView: View) {
             else -> bottomSheetBehavior.state = BottomSheetBehavior.STATE_COLLAPSED
         }
     }
+
+
+    /* Sets up margins/paddings for edge to edge view - for API 35 and above */
+    private fun setupEdgeToEdge() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
+                // get measurements for status and navigation bar
+                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                // apply measurements to the bottom sheet
+                bottomSheetBehavior.peekHeight = systemBars.bottom + (Keys.BOTTOM_SHEET_PEEK_HEIGHT * ImageHelper.getDensityScalingFactor(rootView.context)).toInt()
+                downloadProgressIndicator.updateLayoutParams<LinearLayout.LayoutParams> {
+                    topMargin = systemBars.top
+                }
+                bottomSheet.updateLayoutParams<CoordinatorLayout.LayoutParams> {
+                    bottomMargin = systemBars.top // bottomMargin is actually the top margin of the bottom sheet ¯\_(ツ)_/¯
+                }
+                bottomSheet.updatePadding(bottom =  systemBars.bottom)
+                recyclerView.updatePadding(bottom = systemBars.bottom + (Keys.BOTTOM_SHEET_PEEK_HEIGHT * ImageHelper.getDensityScalingFactor(rootView.context)).toInt())
+                // return the insets
+                insets
+            }
+        }
+    }
+
+
+    /* Toggles the bottom padding for the fragment container containing the podcast list */
+    private fun toggleListPadding(playerHidden: Boolean) {
+        if (this::systemBars.isInitialized) {
+            if (playerHidden) {
+                recyclerView.updatePadding(bottom = systemBars.bottom) // todo bottom should be 0
+            } else {
+                recyclerView.updatePadding(bottom = systemBars.bottom + (Keys.BOTTOM_SHEET_PEEK_HEIGHT * ImageHelper.getDensityScalingFactor(rootView.context)).toInt())
+            }
+        } else {
+            if (playerHidden) {
+                recyclerView.updatePadding(bottom = 0)
+            } else {
+                recyclerView.updatePadding(bottom = (Keys.BOTTOM_SHEET_PEEK_HEIGHT * ImageHelper.getDensityScalingFactor(rootView.context)).toInt())
+            }
+        }
+    }
+
 
 
     /*

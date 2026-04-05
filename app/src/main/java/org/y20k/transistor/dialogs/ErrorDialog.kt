@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -23,7 +23,6 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import org.y20k.transistor.R
-import org.y20k.transistor.helpers.LogHelper
 
 
 /*
@@ -32,7 +31,7 @@ import org.y20k.transistor.helpers.LogHelper
 class ErrorDialog {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(ErrorDialog::class.java)
+    private val TAG: String = ErrorDialog::class.java.simpleName
 
 
     /* Construct and show dialog */

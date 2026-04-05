@@ -1,9 +1,9 @@
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="org.y20k.transistor">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -20,7 +20,7 @@
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:localeConfig="@xml/locales_config"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
@@ -30,14 +30,6 @@
             android:resource="@xml/automotive_app_desc"/>
         <meta-data android:name="com.google.android.gms.car.notification.SmallIcon"
             android:resource="@mipmap/ic_launcher" />
-
-        <activity
-            android:name=".PlayerServiceStarterActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="org.y20k.transistor.action.START_PLAYER_SERVICE" />
-            </intent-filter>
-        </activity>
 
         <!-- Main activity for radio station playback on phone -->
         <activity
@@ -51,7 +43,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
-            <!-- react to voice searches, like "Play Security Now" -->
+            <!-- react to voice searches, like "Byte FM" -->
             <intent-filter>
                 <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -117,11 +109,13 @@
 
         <!-- Player Service -->
         <service
-            android:name=".playback.PlayerService"
+            android:name=".PlayerService"
+            android:foregroundServiceType="mediaPlayback"
             android:enabled="true"
             android:exported="true"
             tools:ignore="ExportedService">
             <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService"/>
                 <action android:name="android.media.browse.MediaBrowserService"/>
                 <action android:name="org.y20k.transistor.action.START_PLAYER_SERVICE" />
             </intent-filter>
@@ -140,13 +134,12 @@
 
         <!-- handles media buttons -->
         <receiver
-            android:name="androidx.media.session.MediaButtonReceiver"
+            android:name="androidx.media3.session.MediaButtonReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </receiver>
-
 
         <!-- file provider -->
         <provider

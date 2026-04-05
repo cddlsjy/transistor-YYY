@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -15,14 +15,19 @@
 package org.y20k.transistor.helpers
 
 import android.content.Context
-import android.graphics.*
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.Paint
 import android.net.Uri
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import androidx.palette.graphics.Palette
-import org.y20k.transistor.Keys
 import org.y20k.transistor.R
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 
@@ -33,7 +38,7 @@ import java.io.InputStream
 object ImageHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(ImageHelper::class.java)
+    private val TAG: String = ImageHelper::class.java.simpleName
 
     /* Get scaling factor from display density */
     fun getDensityScalingFactor(context: Context): Float {
@@ -52,7 +57,7 @@ object ImageHelper {
     fun getStationImage(context: Context, imageUriString: String): Bitmap {
         var bitmap: Bitmap? = null
 
-        if (imageUriString != Keys.LOCATION_DEFAULT_STATION_IMAGE) {
+        if (imageUriString.isNotEmpty()) {
             try {
                 // just decode the file
                 bitmap = BitmapFactory.decodeFile(imageUriString.toUri().path)
@@ -70,6 +75,17 @@ object ImageHelper {
     }
 
 
+    /* Get an unscaled version of the station image as a ByteArray */
+    fun getStationImageAsByteArray(context: Context, imageUriString: String = String()): ByteArray {
+        val coverBitmap: Bitmap = getStationImage(context, imageUriString)
+        val stream = ByteArrayOutputStream()
+        coverBitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        val coverByteArray: ByteArray = stream.toByteArray()
+        coverBitmap.recycle()
+        return coverByteArray
+    }
+
+
     /* Composes foreground bitmap onto background bitmap */
     private fun composeImages(foreground: Bitmap, background: Bitmap, size: Int, yOffset: Int): Bitmap {
         val outputImage = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -81,7 +97,7 @@ object ImageHelper {
 
 
     /* Creates station image on a square background with the main station image color and option padding for adaptive icons */
-    fun createSquareImage(context: Context, bitmap: Bitmap, backgroundColor: Int, size: Int, adaptivePadding: Boolean): Bitmap? {
+    fun createSquareImage(context: Context, bitmap: Bitmap, backgroundColor: Int, size: Int, adaptivePadding: Boolean): Bitmap {
 
         // create background
         val background = Paint()
@@ -93,8 +109,8 @@ object ImageHelper {
         }
 
         // create empty bitmap and canvas
-        val outputImage = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-        val imageCanvas = Canvas(outputImage)
+        val outputImage: Bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val imageCanvas: Canvas = Canvas(outputImage)
 
         // draw square background
         val right = size.toFloat()
@@ -140,7 +156,7 @@ object ImageHelper {
     /* Return sampled down image for given Uri */
     private fun decodeSampledBitmapFromUri(context: Context, imageUriString: String, reqWidth: Int, reqHeight: Int): Bitmap {
         var bitmap: Bitmap? = null
-        if (imageUriString != Keys.LOCATION_DEFAULT_STATION_IMAGE) {
+        if (imageUriString.isNotEmpty()) {
             try {
                 val imageUri: Uri = imageUriString.toUri()
 

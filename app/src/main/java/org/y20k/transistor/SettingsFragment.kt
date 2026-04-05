@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -20,23 +20,38 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
+import android.widget.ImageButton
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import androidx.core.os.bundleOf
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.navigation.findNavController
 import androidx.navigation.fragment.findNavController
-import androidx.preference.*
+import androidx.preference.ListPreference
+import androidx.preference.Preference
+import androidx.preference.PreferenceCategory
+import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
+import androidx.preference.contains
+import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import org.y20k.transistor.dialogs.ErrorDialog
 import org.y20k.transistor.dialogs.YesNoDialog
-import org.y20k.transistor.helpers.*
+import org.y20k.transistor.helpers.AppThemeHelper
+import org.y20k.transistor.helpers.BackupHelper
+import org.y20k.transistor.helpers.FileHelper
+import org.y20k.transistor.helpers.NetworkHelper
+import org.y20k.transistor.helpers.PreferencesHelper
 
 
 /*
@@ -45,18 +60,24 @@ import org.y20k.transistor.helpers.*
 class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListener {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(SettingsFragment::class.java)
+    private val TAG: String = SettingsFragment::class.java.simpleName
 
 
     /* Overrides onViewCreated from PreferenceFragmentCompat */
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        // set up top bar button
+        val topbarBackButton: ImageButton = view.findViewById(R.id.arrow_back)
+        topbarBackButton.setOnClickListener {
+            view.findNavController().navigateUp()
+        }
+        // set up top bar text
+        val topbarTitleView: MaterialTextView = view.findViewById(R.id.topbar_title)
+        topbarTitleView.text = getText(R.string.fragment_settings_title)
         // set the background color
         view.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.app_window_background))
-        // show action bar
-        (activity as AppCompatActivity).supportActionBar?.show()
-        (activity as AppCompatActivity).supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        (activity as AppCompatActivity).supportActionBar?.title = getString(R.string.fragment_settings_title)
+        // set up edge to edge display
+        setupEdgeToEdge(view)
     }
 
 
@@ -85,6 +106,27 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
                 return@setOnPreferenceChangeListener false
             }
         }
+
+
+        // set up "Tap Anywhere" preference
+        val preferenceEnableTapAnywherePlayback: SwitchPreferenceCompat = SwitchPreferenceCompat(activity as Context)
+        preferenceEnableTapAnywherePlayback.title = getString(R.string.pref_tap_anywhere_playback_title)
+        preferenceEnableTapAnywherePlayback.setIcon(R.drawable.ic_play_circle_outline_24dp)
+        preferenceEnableTapAnywherePlayback.key = Keys.PREF_TAP_ANYWHERE_PLAYBACK
+        preferenceEnableTapAnywherePlayback.summaryOn = getString(R.string.pref_tap_anywhere_playback_summary_enabled)
+        preferenceEnableTapAnywherePlayback.summaryOff = getString(R.string.pref_tap_anywhere_playback_summary_disabled)
+        preferenceEnableTapAnywherePlayback.setDefaultValue(PreferencesHelper.loadTapAnyWherePlayback())
+
+
+        // set up "Auto Play Last Station" preference
+        val preferenceAutoPlayLastStation: SwitchPreferenceCompat = SwitchPreferenceCompat(activity as Context)
+        preferenceAutoPlayLastStation.title = getString(R.string.pref_auto_play_last_station_title)
+        preferenceAutoPlayLastStation.setIcon(R.drawable.ic_play_circle_outline_24dp)
+        preferenceAutoPlayLastStation.key = Keys.PREF_AUTO_PLAY_LAST_STATION
+        preferenceAutoPlayLastStation.summaryOn = getString(R.string.pref_auto_play_last_station_summary_on)
+        preferenceAutoPlayLastStation.summaryOff = getString(R.string.pref_auto_play_last_station_summary_off)
+        preferenceAutoPlayLastStation.setDefaultValue(PreferencesHelper.loadAutoPlayLastStation())
+
 
         // set up "Update Station Images" preference
         val preferenceUpdateStationImages: Preference = Preference(activity as Context)
@@ -138,9 +180,19 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         preferenceRestoreCollection.setIcon(R.drawable.ic_restore_24dp)
         preferenceRestoreCollection.summary = getString(R.string.pref_restore_summary)
         preferenceRestoreCollection.setOnPreferenceClickListener {
-            openRestoreCollecionDialog()
+            openRestoreCollectionDialog()
             return@setOnPreferenceClickListener true
         }
+
+
+        // set up "Buffer Size" preference
+        val preferenceBufferSize: SwitchPreferenceCompat = SwitchPreferenceCompat(activity as Context)
+        preferenceBufferSize.title = getString(R.string.pref_buffer_size_title)
+        preferenceBufferSize.setIcon(R.drawable.ic_network_check_24dp)
+        preferenceBufferSize.key = Keys.PREF_LARGE_BUFFER_SIZE
+        preferenceBufferSize.summaryOn = getString(R.string.pref_buffer_size_summary_enabled)
+        preferenceBufferSize.summaryOff = getString(R.string.pref_buffer_size_summary_disabled)
+        preferenceBufferSize.setDefaultValue(PreferencesHelper.loadLargeBufferSize())
 
 
         // set up "Edit Stream Address" preference
@@ -185,23 +237,10 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
             val clip: ClipData = ClipData.newPlainText("simple text", preferenceAppVersion.summary)
             val cm: ClipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(clip)
-            Toast.makeText(activity as Context, R.string.toastmessage_copied_to_clipboard, Toast.LENGTH_LONG).show()
-            return@setOnPreferenceClickListener true
-        }
-
-
-        // set up "Report Issue" preference
-        val preferenceReportIssue: Preference = Preference(context)
-        preferenceReportIssue.title = getString(R.string.pref_report_issue_title)
-        preferenceReportIssue.setIcon(R.drawable.ic_bug_report_24dp)
-        preferenceReportIssue.summary = getString(R.string.pref_report_issue_summary)
-        preferenceReportIssue.setOnPreferenceClickListener {
-            // open web browser
-            val intent = Intent().apply {
-                action = Intent.ACTION_VIEW
-                data = "https://github.com/y20k/transistor/issues".toUri()
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                // since API 33 (TIRAMISU) the OS displays its own notification when content is copied to the clipboard
+                Toast.makeText(activity as Context, R.string.toast_message_copied_to_clipboard, Toast.LENGTH_LONG).show()
             }
-            startActivity(intent)
             return@setOnPreferenceClickListener true
         }
 
@@ -210,6 +249,8 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         val preferenceCategoryGeneral: PreferenceCategory = PreferenceCategory(activity as Context)
         preferenceCategoryGeneral.title = getString(R.string.pref_general_title)
         preferenceCategoryGeneral.contains(preferenceThemeSelection)
+        preferenceCategoryGeneral.contains(preferenceEnableTapAnywherePlayback)
+        preferenceCategoryGeneral.contains(preferenceAutoPlayLastStation)
 
         val preferenceCategoryMaintenance: PreferenceCategory = PreferenceCategory(activity as Context)
         preferenceCategoryMaintenance.title = getString(R.string.pref_maintenance_title)
@@ -221,18 +262,20 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
 
         val preferenceCategoryAdvanced: PreferenceCategory = PreferenceCategory(activity as Context)
         preferenceCategoryAdvanced.title = getString(R.string.pref_advanced_title)
+        preferenceCategoryAdvanced.contains(preferenceBufferSize)
         preferenceCategoryAdvanced.contains(preferenceEnableEditingGeneral)
         preferenceCategoryAdvanced.contains(preferenceEnableEditingStreamUri)
 
         val preferenceCategoryAbout: PreferenceCategory = PreferenceCategory(context)
         preferenceCategoryAbout.title = getString(R.string.pref_about_title)
         preferenceCategoryAbout.contains(preferenceAppVersion)
-        preferenceCategoryAbout.contains(preferenceReportIssue)
 
 
         // setup preference screen
         screen.addPreference(preferenceCategoryGeneral)
         screen.addPreference(preferenceThemeSelection)
+        screen.addPreference(preferenceEnableTapAnywherePlayback)
+        screen.addPreference(preferenceAutoPlayLastStation)
         screen.addPreference(preferenceCategoryMaintenance)
         screen.addPreference(preferenceUpdateStationImages)
 //        screen.addPreference(preferenceUpdateCollection)
@@ -240,12 +283,12 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         screen.addPreference(preferenceBackupCollection)
         screen.addPreference(preferenceRestoreCollection)
         screen.addPreference(preferenceCategoryAdvanced)
+        screen.addPreference(preferenceBufferSize)
         screen.addPreference(preferenceEnableEditingGeneral)
         screen.addPreference(preferenceEnableEditingStreamUri)
 
         screen.addPreference(preferenceCategoryAbout)
         screen.addPreference(preferenceAppVersion)
-        screen.addPreference(preferenceReportIssue)
         preferenceScreen = screen
     }
 
@@ -281,7 +324,7 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
 
 
     /* Register the ActivityResultLauncher for the backup dialog */
-    private val requestBackupCollectionLauncher = registerForActivityResult(StartActivityForResult(), this::requestBackupCollecionResult)
+    private val requestBackupCollectionLauncher = registerForActivityResult(StartActivityForResult(), this::requestBackupCollectionResult)
 
 
     /* Register the ActivityResultLauncher for the restore dialog */
@@ -297,25 +340,25 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
             if (targetUri != null && sourceUri != null) {
                 // copy file async (= fire & forget - no return value needed)
                 CoroutineScope(IO).launch {
-                    FileHelper.saveCopyOfFileSuspended(activity as Context, sourceUri, targetUri)
+                    FileHelper.copyFile(activity as Context, sourceUri, targetUri, true)
                 }
-                Toast.makeText(activity as Context, R.string.toastmessage_save_m3u, Toast.LENGTH_LONG).show()
+                Toast.makeText(activity as Context, R.string.toast_message_save_m3u, Toast.LENGTH_LONG).show()
             } else {
-                LogHelper.w(TAG, "M3U export failed.")
+                Log.w(TAG, "M3U export failed.")
             }
         }
     }
 
 
-    /* Pass the activity result for the backup collecion dialog */
-    private fun requestBackupCollecionResult(result: ActivityResult) {
+    /* Pass the activity result for the backup collection dialog */
+    private fun requestBackupCollectionResult(result: ActivityResult) {
         // save station backup file to result file location
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val targetUri: Uri? = result.data?.data
             if (targetUri != null) {
                 BackupHelper.backup(activity as Context, targetUri)
             } else {
-                LogHelper.w(TAG, "Station backup failed.")
+                Log.w(TAG, "Station backup failed.")
             }
         }
     }
@@ -340,7 +383,7 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
     /* Updates collection */
     private fun updateCollection() {
         if (NetworkHelper.isConnectedToNetwork(activity as Context)) {
-            Toast.makeText(activity as Context, R.string.toastmessage_updating_collection, Toast.LENGTH_LONG).show()
+            Toast.makeText(activity as Context, R.string.toast_message_updating_collection, Toast.LENGTH_LONG).show()
             // update collection in player screen
             val bundle: Bundle = bundleOf(Keys.ARG_UPDATE_COLLECTION to true)
             this.findNavController().navigate(R.id.player_destination, bundle)
@@ -353,7 +396,7 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
     /* Updates station images */
     private fun updateStationImages() {
         if (NetworkHelper.isConnectedToNetwork(activity as Context)) {
-            Toast.makeText(activity as Context, R.string.toastmessage_updating_station_images, Toast.LENGTH_LONG).show()
+            Toast.makeText(activity as Context, R.string.toast_message_updating_station_images, Toast.LENGTH_LONG).show()
             // update collection in player screen
             val bundle: Bundle = bundleOf(
                 Keys.ARG_UPDATE_IMAGES to true
@@ -376,8 +419,8 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         try {
             requestSaveM3uLauncher.launch(intent)
         } catch (exception: Exception) {
-            LogHelper.e(TAG, "Unable to save M3U.\n$exception")
-            Toast.makeText(activity as Context, R.string.toastmessage_install_file_helper, Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Unable to save M3U.\n$exception")
+            Toast.makeText(activity as Context, R.string.toast_message_install_file_helper, Toast.LENGTH_LONG).show()
         }
     }
 
@@ -395,16 +438,14 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         try {
             requestBackupCollectionLauncher.launch(intent)
         } catch (exception: Exception) {
-            LogHelper.e(TAG, "Unable to save M3U.\n$exception")
-            Toast.makeText(activity as Context, R.string.toastmessage_install_file_helper, Toast.LENGTH_LONG).show()
+            Log.e(TAG, "Unable to save M3U.\n$exception")
+            Toast.makeText(activity as Context, R.string.toast_message_install_file_helper, Toast.LENGTH_LONG).show()
         }
     }
 
 
-
-
     /* Opens up a file picker to select the file containing the collection to be restored */
-    private fun openRestoreCollecionDialog() {
+    private fun openRestoreCollectionDialog() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
             type = "*/*"
@@ -414,10 +455,25 @@ class SettingsFragment: PreferenceFragmentCompat(), YesNoDialog.YesNoDialogListe
         try {
             requestRestoreCollectionLauncher.launch(intent)
         } catch (exception: Exception) {
-            LogHelper.e(TAG, "Unable to open file picker for ZIP.\n$exception")
+            Log.e(TAG, "Unable to open file picker for ZIP.\n$exception")
             // Toast.makeText(activity as Context, R.string.toast_message_install_file_helper, Toast.LENGTH_LONG).show()
         }
     }
 
+
+    /* Sets up margins/paddings for edge to edge view - for API 35 and above */
+    private fun setupEdgeToEdge(view: View) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            ViewCompat.setOnApplyWindowInsetsListener(view) { v, insets ->
+                // get measurements for status and navigation bar
+                val systemBars =
+                    insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                // apply measurements to the main view
+                view.updatePadding(bottom = systemBars.bottom)
+                // return the insets
+                insets
+            }
+        }
+    }
 
 }

@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -26,7 +26,7 @@ import org.y20k.transistor.Keys
 class DownloadWorker(context : Context, params : WorkerParameters): Worker(context, params) {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(DownloadWorker::class.java)
+    private val TAG: String = DownloadWorker::class.java.simpleName
 
 
     /* Overrides doWork */

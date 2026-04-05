@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -22,7 +22,7 @@ import org.y20k.transistor.Keys
 import org.y20k.transistor.core.Collection
 import org.y20k.transistor.core.Station
 import java.io.File
-import java.util.*
+import java.util.GregorianCalendar
 
 
 /*
@@ -31,7 +31,22 @@ import java.util.*
 object ImportHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(ImportHelper::class.java)
+    private val TAG: String = ImportHelper::class.java.simpleName
+
+    /* */
+    fun removeDefaultStationImageUris(context: Context) {
+        val collection: Collection = FileHelper.readCollection(context)
+        collection.stations.forEach { station ->
+            if (station.image == Keys.LOCATION_DEFAULT_STATION_IMAGE) {
+                station.image = String()
+            }
+            if (station.smallImage == Keys.LOCATION_DEFAULT_STATION_IMAGE) {
+                station.smallImage = String()
+            }
+        }
+        CollectionHelper.saveCollection(context, collection, async = false)
+    }
+
 
 
     /* Converts older station of type .m3u  */
@@ -52,7 +67,7 @@ object ImportHelper {
                         station.streamContent = NetworkHelper.detectContentType(station.getStreamUri()).type
                         // try to also import station image
                         val sourceImageUri: String = getLegacyStationImageFileUri(context, station)
-                        if (sourceImageUri != Keys.LOCATION_DEFAULT_STATION_IMAGE) {
+                        if (sourceImageUri.isNotEmpty()) {
                             // create and add image and small image + get main color
                             station.image = FileHelper.saveStationImage(context, station.uuid, sourceImageUri, Keys.SIZE_STATION_IMAGE_CARD, Keys.STATION_SMALL_IMAGE_FILE).toString()
                             station.smallImage = FileHelper.saveStationImage(context, station.uuid, sourceImageUri, Keys.SIZE_STATION_IMAGE_MAXIMUM, Keys.STATION_IMAGE_FILE).toString()
@@ -107,10 +122,10 @@ object ImportHelper {
             if (legacyStationImage.exists()) {
                 return legacyStationImage.toString()
             } else {
-                return Keys.LOCATION_DEFAULT_STATION_IMAGE
+                return String()
             }
         } else {
-            return Keys.LOCATION_DEFAULT_STATION_IMAGE
+            return String()
         }
     }
 

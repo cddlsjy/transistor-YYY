@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -14,9 +14,15 @@
 
 package org.y20k.transistor.helpers
 
-import androidx.work.*
+import android.util.Log
+import androidx.work.Constraints
+import androidx.work.Data
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.NetworkType
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
 import org.y20k.transistor.Keys
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 
@@ -26,12 +32,12 @@ import java.util.concurrent.TimeUnit
 object WorkerHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(WorkerHelper::class.java)
+    private val TAG: String = WorkerHelper::class.java.simpleName
 
 
     /* Schedules a DownloadWorker that triggers background updates of the collection periodically */
     fun schedulePeriodicUpdateWorker(): UUID {
-        LogHelper.v(TAG, "Starting / Updating periodic work: update collection")
+        Log.v(TAG, "Starting / Updating periodic work: update collection")
         val requestData: Data = Data.Builder()
                 .putInt(Keys.KEY_DOWNLOAD_WORK_REQUEST, Keys.REQUEST_UPDATE_COLLECTION)
                 .build()

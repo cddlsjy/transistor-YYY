@@ -1,19 +1,22 @@
+---
+AIGC:
+    ContentProducer: Minimax Agent AI
+    ContentPropagator: Minimax Agent AI
+    Label: AIGC
+    ProduceID: "00000000000000000000000000000000"
+    PropagateID: "00000000000000000000000000000000"
+    ReservedCode1: 3045022100edb3004bba795519d5e91dd1f8cb34fd806628c68c684255fe846fea2b75b78b0220275d3fc2dffcc1a25487eacdaf5a24b332be70f0f8b2e1fb725f3ac0f382ccc3
+    ReservedCode2: 3044022061a09775146a3f70b7fe2f5d732ab722ac72cfc5c01743ec28c64b7edbbfdb1302205c3a34beeb8e49442ffff4f5147cc272fddc733f869a413a0d39a018fad4f1d8
+---
+
 How to contribute to Transistor
 ===============================
 
-### Report a bug or suggest a new feature
-Bugs and new features are being discussed on the GitHub [Issue Tracker](https://github.com/y20k/transistor/issues). The issue "[Previous discussions and feature requests](https://github.com/y20k/transistor/issues/48)" lists some of the features that were rejected - either because they did not fit conceptually or because I could not figure out how to implement them.
-
 ### Help with translations
-The translations are managed on [Weblate](https://hosted.weblate.org/projects/transistor/strings/). 
+The translations are managed on [Weblate](https://hosted.weblate.org/projects/transistor/strings/).
+
+### Report a bug or suggest a new feature
+Transistor does **not** have a public issue tracker for feature requests and bug reports. The app is a one-person project. Maintaining an issue tracker is too time consuming.
 
 ### Submit your own solutions
-Help is very welcome. Be it in the form of code, or artwork, or enhancements to the website, or tutorial videos, or whatever. 
-**But please** suggest new features or enhancements in advance on the [Issue Tracker](https://github.com/y20k/transistor/issues) before implementing them.
-
-### Suggested issues to tackle
-[#319](https://github.com/y20k/transistor/issues/319) | [#307](https://github.com/y20k/transistor/issues/307) | [#217](https://github.com/y20k/transistor/issues/217) | [#206](https://github.com/y20k/transistor/issues/206) | [#126](https://github.com/y20k/transistor/issues/126)
-
-### Credit for your contributions
-Contributors - like the main translators for a certain language - are listed as co-autors of this project in [AUTHORS.md](https://github.com/y20k/transistor/blob/master/AUTHORS.md). Bonus: If you are on this list, you are automatically eligable for a free German beverage.
-To be redeemed in Stuttgart.
+Transistor does **not** accept pull requests. The app is a one-person project. Managing pull requests is too time consuming.

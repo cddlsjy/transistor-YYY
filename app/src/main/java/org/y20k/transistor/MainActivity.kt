@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -15,16 +15,23 @@
 package org.y20k.transistor
 
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
+import androidx.fragment.app.FragmentContainerView
 import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.navigateUp
 import org.y20k.transistor.helpers.AppThemeHelper
 import org.y20k.transistor.helpers.FileHelper
-import org.y20k.transistor.helpers.LogHelper
+import org.y20k.transistor.helpers.ImportHelper
 import org.y20k.transistor.helpers.PreferencesHelper
 
 
@@ -34,10 +41,11 @@ import org.y20k.transistor.helpers.PreferencesHelper
 class MainActivity: AppCompatActivity() {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(MainActivity::class.java)
+    private val TAG: String = MainActivity::class.java.simpleName
 
 
     /* Main class variables */
+    private lateinit var systemBars: Insets
     private lateinit var appBarConfiguration: AppBarConfiguration
 
 
@@ -45,10 +53,16 @@ class MainActivity: AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // house-keeping: determine if edit stations is enabled by default todo: remove in 2023
-        if (PreferencesHelper.loadCollectionSize() != -1) {
-            // existing user detected - enable Edit Stations by default
-            PreferencesHelper.saveEditStationsEnabled(true)
+        // house keeping - if necessary
+        if (PreferencesHelper.isHouseKeepingNecessary()) {
+            // house-keeping 1: remove hard coded default image
+            ImportHelper.removeDefaultStationImageUris(this)
+            // house-keeping 2: if existing user detected, enable Edit Stations by default
+            if (PreferencesHelper.loadCollectionSize() != -1) {
+                // existing user detected - enable Edit Stations by default
+                PreferencesHelper.saveEditStationsEnabled(true)
+            }
+            PreferencesHelper.saveHouseKeepingNecessaryState()
         }
 
         // set up views
@@ -66,8 +80,35 @@ class MainActivity: AppCompatActivity() {
         NavigationUI.setupWithNavController(toolbar, navController, appBarConfiguration)
         supportActionBar?.hide()
 
+        // set up edge to edge display
+        setupEdgeToEdge()
+
         // register listener for changes in shared preferences
         PreferencesHelper.registerPreferenceChangeListener(sharedPreferenceChangeListener)
+    }
+
+
+    /* Sets up margins/paddings for edge to edge view - for API 35 and above */
+    private fun setupEdgeToEdge() {
+        val rootView: ConstraintLayout = findViewById(R.id.root_view)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            ViewCompat.setOnApplyWindowInsetsListener(rootView) { v, insets ->
+                // get measurements for status and navigation bar
+                systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout())
+                // apply measurements to the fragment container containing the station list
+                val mainHostContainer: FragmentContainerView = rootView.findViewById(R.id.main_host_container)
+                mainHostContainer.updatePadding(
+                    left = systemBars.left,
+                    top = systemBars.top,
+                    right = systemBars.right,
+                )
+                // return the insets
+                insets
+            }
+        } else {
+            // deactivate edge to edge
+            rootView.fitsSystemWindows = true
+        }
     }
 
 

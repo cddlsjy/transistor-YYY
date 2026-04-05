@@ -1,0 +1,206 @@
+## 最佳方案：结合 Kimi 高亮 + 根视图按键监听
+
+根据你的反馈（上下键无效，OK键有效），问题根源是 **RecyclerView 未获得焦点**，导致其 `setOnKeyListener` 不触发。  
+解决方案：**在 Fragment 根视图上拦截方向键事件**，同时利用 Kimi 的 `selectedPosition` 机制实现电台高亮。
+
+### 修改文件清单
+1. `BasePlayerFragment.kt`  
+2. `CollectionAdapter.kt`  
+3. `card_station.xml`（可选，增加高亮背景）
+
+---
+
+## 1. 修改 `BasePlayerFragment.kt`
+
+### 1.1 移除 RecyclerView 的按键监听，改为根视图监听
+找到 `initializeViews()` 方法，将原来的 `setupRecyclerViewForTv()` 替换为以下实现：
+
+```kotlin
+private fun initializeViews() {
+    // ... 原有代码（设置 adapter、滑动删除、睡眠定时器等）...
+
+    // 设置电视遥控器支持（根视图监听）
+    setupTvDpadNavigation()
+}
+
+/**
+ * 在根视图上监听方向键，实现上下键直接切换电台
+ */
+private fun setupTvDpadNavigation() {
+    layout.rootView.isFocusableInTouchMode = true
+    layout.rootView.requestFocus()
+    layout.rootView.setOnKeyListener { _, keyCode, event ->
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    switchToPreviousStation()
+                    return@setOnKeyListener true
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    switchToNextStation()
+                    return@setOnKeyListener true
+                }
+            }
+        }
+        false
+    }
+}
+```
+
+### 1.2 修改 `playStationAndFocus`，同步更新 Adapter 中的选中位置
+```kotlin
+private fun playStationAndFocus(position: Int) {
+    if (position < 0 || position >= collection.stations.size) return
+    if (position == playerState.stationPosition && controller?.isPlaying == true) return
+
+    // 播放新电台
+    onPlayButtonTapped(position)
+
+    // 更新 Adapter 中的高亮位置（Kimi 风格）
+    collectionAdapter.setSelectedPosition(position)
+
+    // 滚动列表并请求焦点（可选，因为根视图监听不依赖焦点）
+    layout.recyclerView.post {
+        layout.recyclerView.smoothScrollToPosition(position)
+    }
+}
+```
+
+### 1.3 在自动播放时也同步高亮
+修改 `attemptAutoPlayLastStation()` 中的播放调用：
+
+```kotlin
+private fun attemptAutoPlayLastStation() {
+    if (autoPlayTriggered) return
+    if (!PreferencesHelper.loadAutoPlayLastStation()) return
+    if (collection.stations.isEmpty()) return
+    val lastPos = PreferencesHelper.loadLastPlayedStationPosition()
+    if (lastPos in 0 until collection.stations.size) {
+        if (controller?.isPlaying == false) {
+            playStationAndFocus(lastPos)   // 已包含高亮更新
+        }
+    }
+    autoPlayTriggered = true
+}
+```
+
+### 1.4 在 `onPlayButtonTapped` 中也同步高亮（用于触摸点击）
+```kotlin
+override fun onPlayButtonTapped(stationPosition: Int) {
+    if (controller?.isPlaying == true && stationPosition == playerState.stationPosition) {
+        controller?.pause()
+    } else {
+        playerState.stationPosition = stationPosition
+        controller?.play(requireContext(), stationPosition)
+        collectionAdapter.setSelectedPosition(stationPosition)   // 新增
+    }
+    updatePlayerViews()
+    layout.recyclerView.post {
+        layout.layoutManager.findViewByPosition(stationPosition)?.requestFocus()
+    }
+}
+```
+
+---
+
+## 2. 修改 `CollectionAdapter.kt`（Kimi 高亮方案）
+
+### 2.1 添加成员变量
+```kotlin
+private var selectedPosition: Int = RecyclerView.NO_POSITION
+```
+
+### 2.2 添加公开方法
+```kotlin
+fun setSelectedPosition(position: Int) {
+    if (selectedPosition == position) return
+    val oldPosition = selectedPosition
+    selectedPosition = position
+    if (oldPosition != RecyclerView.NO_POSITION) {
+        notifyItemChanged(oldPosition)
+    }
+    if (selectedPosition != RecyclerView.NO_POSITION) {
+        notifyItemChanged(selectedPosition)
+    }
+}
+```
+
+### 2.3 在 `onBindViewHolder` 中设置高亮
+在 `StationViewHolder` 的绑定逻辑中，根据 `position == selectedPosition` 设置背景：
+
+```kotlin
+is StationViewHolder -> {
+    val station = collection.stations[position]
+    val stationViewHolder = holder
+
+    // ... 原有代码（设置图标、名称、按钮等）...
+
+    // 高亮当前选中的电台
+    if (position == selectedPosition) {
+        stationViewHolder.stationCardView.setBackgroundResource(R.drawable.shape_search_result_item_selected)
+    } else {
+        stationViewHolder.stationCardView.setBackgroundColor(ContextCompat.getColor(context, R.color.list_card_background))
+    }
+}
+```
+
+> 注：`R.drawable.shape_search_result_item_selected` 已存在于项目中，可复用；若需自定义可新建。
+
+### 2.4 在 `onDetachedFromRecyclerView` 中清除高亮（可选）
+```kotlin
+override fun onDetachedFromRecyclerView(recyclerView: RecyclerView) {
+    super.onDetachedFromRecyclerView(recyclerView)
+    selectedPosition = RecyclerView.NO_POSITION
+    // ... 原有代码 ...
+}
+```
+
+---
+
+## 3. 可选：增强卡片焦点视觉（`card_station.xml`）
+
+如果希望焦点移动时有明显的边框或阴影，可以修改根布局：
+
+```xml
+<androidx.constraintlayout.widget.ConstraintLayout
+    ...>
+    android:focusable="true"
+    android:focusableInTouchMode="true"
+    android:background="@drawable/selector_station_card_background">
+```
+
+并创建 `res/drawable/selector_station_card_background.xml`：
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true" android:drawable="@color/list_card_focus_background" />
+    <item android:drawable="@color/list_card_background" />
+</selector>
+```
+
+在 `colors.xml` 中添加：
+```xml
+<color name="list_card_focus_background">#332196F3</color>
+```
+
+> 注意：因为我们已经用根视图监听方向键，焦点不会自动移动到卡片上，这个高亮仅供触屏点击时反馈。  
+> 如果需要遥控器移动时也有焦点边框，可以保留 `layout.recyclerView.requestFocus()` 并在 `setupTvDpadNavigation` 中取消根视图焦点，但这可能又回到原点。建议**依靠 selectedPosition 高亮来指示当前播放/选中的电台**，这是最可靠的 TV 体验。
+
+---
+
+## 总结：为什么这个方案能解决问题？
+
+| 问题 | 原因 | 解决方案 |
+|------|------|----------|
+| 上下键无效 | RecyclerView 未获得焦点，`setOnKeyListener` 不触发 | 在根视图上拦截方向键事件 |
+| OK 键有效 | 默认焦点可能在播放按钮或卡片上，OK 键触发了点击事件 | 无需修改 |
+| 缺少高亮 | 原方案未实现高亮 | 采用 Kimi 的 `selectedPosition` 机制 |
+| 循环与翻页 | 已实现 | 保持不变 |
+
+**最终效果**：
+- 上下键：直接切换电台并播放，列表自动滚动，当前播放电台高亮显示。
+- 自动播放：启动应用时自动播放上次电台，同时高亮。
+- 触摸点击：播放后同步高亮，焦点可移动。
+
+请按照上述步骤修改代码，编译测试。如果仍有问题，请提供 logcat 中 `switchToPreviousStation` 是否被调用的日志。

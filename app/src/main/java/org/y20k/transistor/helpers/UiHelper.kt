@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -20,7 +20,6 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.drawable.ColorDrawable
-import android.os.Build
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
@@ -38,7 +37,7 @@ import org.y20k.transistor.R
 object UiHelper {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(UiHelper::class.java)
+    private val TAG: String = UiHelper::class.java.simpleName
 
 
     /* Sets layout margins for given view in DP */
@@ -186,12 +185,7 @@ object UiHelper {
         private val intrinsicWidth: Int = starIcon?.intrinsicWidth ?: 0
         private val intrinsicHeight: Int = starIcon?.intrinsicHeight ?: 0
         private val background: ColorDrawable = ColorDrawable()
-        @Suppress("DEPRECATION")
-        private val backgroundColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            context.resources.getColor(R.color.list_card_mark_starred_background, null)
-        } else {
-            context.resources.getColor(R.color.list_card_mark_starred_background)
-        }
+        private val backgroundColor = context.resources.getColor(R.color.list_card_mark_starred_background, null)
         private val clearPaint: Paint = Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
 
         override fun getMovementFlags(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder): Int {

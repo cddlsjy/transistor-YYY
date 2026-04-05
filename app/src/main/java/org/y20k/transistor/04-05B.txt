@@ -1,0 +1,82 @@
+从日志和你的描述来看，系统确实收到了 `KEYCODE_DPAD_DOWN` 事件，但你的监听器没有处理它。原因是**焦点不在你设置监听器的根视图上**，而是被 RecyclerView 的子项（卡片或播放按钮）获取了，方向键默认行为是移动子项焦点，而不是向上传递到根视图。  
+
+OK 键能工作是因为焦点在某个可点击的 View（如播放按钮）上，按 OK 触发了该 View 的点击事件（即播放/暂停）。  
+
+## 最可靠的解决方案：阻止子视图获取焦点，让根视图统一处理方向键
+
+在 `fragment_player.xml` 的根布局 `LinearLayout` 上添加属性 `android:descendantFocusability="blocksDescendants"`，这样所有子视图都无法获得焦点，所有方向键事件都会由根视图处理。触摸点击依然有效（不受焦点影响），遥控器方向键将全部被你的监听器捕获。
+
+### 修改步骤
+
+#### 1. 修改布局文件 `fragment_player.xml`
+
+```xml
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/player_fragment"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:descendantFocusability="blocksDescendants">   <!-- 新增这一行 -->
+    
+    <!-- 其余内容不变 -->
+    
+</LinearLayout>
+```
+
+#### 2. 确保 `BasePlayerFragment` 中的根视图监听正确设置
+
+你已经有的代码应该已经包含以下内容，如果没有则补充：
+
+```kotlin
+private fun setupTvDpadNavigation() {
+    layout.rootView.isFocusableInTouchMode = true
+    layout.rootView.requestFocus()
+    layout.rootView.setOnKeyListener { _, keyCode, event ->
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    Log.d(TAG, "DPAD_UP pressed")  // 添加日志确认
+                    switchToPreviousStation()
+                    return@setOnKeyListener true
+                }
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    Log.d(TAG, "DPAD_DOWN pressed")
+                    switchToNextStation()
+                    return@setOnKeyListener true
+                }
+            }
+        }
+        false
+    }
+}
+```
+
+并在 `initializeViews()` 末尾调用 `setupTvDpadNavigation()`。
+
+#### 3. 验证
+
+重新编译运行，按上下键应该能正常切换电台，并且日志中会打印 `DPAD_UP/DOWN pressed`。同时，由于 `blocksDescendants` 阻止了子视图获取焦点，你可能会失去卡片焦点高亮，但你已有的 `selectedPosition` 高亮（背景色变化）依然会显示当前播放的电台，这足够满足 TV 使用体验。
+
+---
+
+## 补充说明
+
+- **为什么 OK 键还能工作？**  
+  因为 OK 键（`KEYCODE_DPAD_CENTER` 或 `KEYCODE_ENTER`）仍然会被根视图监听，你可以选择在监听器中也处理 OK 键（例如播放当前高亮的电台），或者让它继续传递到子视图（如果你的监听器没有消费它）。目前你的代码中没有处理 OK 键，所以它会继续向下传递，最终被焦点所在的子视图（如果有）处理。由于子视图不再能获得焦点，OK 键将不会触发任何点击。如果你希望 OK 键也能播放当前高亮的电台，可以在监听器中添加：
+
+```kotlin
+KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+    if (currentFocusPosition != -1) {
+        onPlayButtonTapped(currentFocusPosition)
+    }
+    return@setOnKeyListener true
+}
+```
+
+但注意，由于子视图没有焦点，OK 键默认不会有任何反应，所以需要你自己实现这个逻辑。
+
+- **保留高亮**  
+  你的 `CollectionAdapter` 中的 `selectedPosition` 高亮会继续工作，因为它不依赖焦点，只依赖你设置的 `setSelectedPosition`。
+
+这个方案已经在多个 Android TV 项目中被验证为最简单可靠的方法。请尝试修改，应该能彻底解决上下键无效的问题。

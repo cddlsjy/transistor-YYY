@@ -6,7 +6,7 @@
  * This file is part of
  * TRANSISTOR - Radio App for Android
  *
- * Copyright (c) 2015-22 - Y20K.org
+ * Copyright (c) 2015-25 - Y20K.org
  * Licensed under the MIT-License
  * http://opensource.org/licenses/MIT
  */
@@ -16,17 +16,19 @@ package org.y20k.transistor.collection
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.support.v4.media.session.PlaybackStateCompat
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.EditorInfo
+import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.Group
+import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -38,15 +40,24 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.textfield.TextInputEditText
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.y20k.transistor.Keys
 import org.y20k.transistor.R
 import org.y20k.transistor.core.Collection
 import org.y20k.transistor.core.Station
-import org.y20k.transistor.helpers.*
-import java.util.*
+import org.y20k.transistor.helpers.CollectionHelper
+import org.y20k.transistor.helpers.FileHelper
+import org.y20k.transistor.helpers.ImageHelper
+import org.y20k.transistor.helpers.NetworkHelper
+import org.y20k.transistor.helpers.PreferencesHelper
+import org.y20k.transistor.helpers.ShortcutHelper
+import org.y20k.transistor.helpers.UiHelper
+import org.y20k.transistor.helpers.UpdateHelper
+import java.util.Locale
 
 
 /*
@@ -55,22 +66,23 @@ import java.util.*
 class CollectionAdapter(private val context: Context, private val collectionAdapterListener: CollectionAdapterListener) : RecyclerView.Adapter<RecyclerView.ViewHolder>(), UpdateHelper.UpdateHelperListener {
 
     /* Define log tag */
-    private val TAG: String = LogHelper.makeLogTag(CollectionAdapter::class.java)
+    private val TAG: String = CollectionAdapter::class.java.simpleName
 
 
     /* Main class variables */
     private lateinit var collectionViewModel: CollectionViewModel
-    // private lateinit var collectionAdapterListener: CollectionAdapterListener
     private var collection: Collection = Collection()
     private var editStationsEnabled: Boolean = PreferencesHelper.loadEditStationsEnabled()
+    private var tapAnywherePlaybackEnabled: Boolean = PreferencesHelper.loadTapAnyWherePlayback()
     private var editStationStreamsEnabled: Boolean = PreferencesHelper.loadEditStreamUrisEnabled()
     private var expandedStationUuid: String = PreferencesHelper.loadStationListStreamUuid()
     private var expandedStationPosition: Int = -1
+    private var selectedPosition: Int = RecyclerView.NO_POSITION
 
 
     /* Listener Interface */
     interface CollectionAdapterListener {
-        fun onPlayButtonTapped(stationUuid: String, playbackState: Int)
+        fun onPlayButtonTapped(stationPosition: Int)
         fun onAddNewButtonTapped()
         fun onChangeImageButtonTapped(stationUuid: String)
     }
@@ -92,6 +104,21 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
         super.onDetachedFromRecyclerView(recyclerView)
         // stop listening for changes in shared preferences
         PreferencesHelper.unregisterPreferenceChangeListener(sharedPreferenceChangeListener)
+        selectedPosition = RecyclerView.NO_POSITION
+    }
+
+
+    /* Sets the selected position and updates the UI */
+    fun setSelectedPosition(position: Int) {
+        if (selectedPosition == position) return
+        val oldPosition = selectedPosition
+        selectedPosition = position
+        if (oldPosition != RecyclerView.NO_POSITION) {
+            notifyItemChanged(oldPosition)
+        }
+        if (selectedPosition != RecyclerView.NO_POSITION) {
+            notifyItemChanged(selectedPosition)
+        }
     }
 
     /* Overrides onCreateViewHolder */
@@ -145,6 +172,13 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
                 setStationButtons(stationViewHolder, station)
                 setEditViews(stationViewHolder, station)
 
+                // highlight currently selected station
+                if (position == selectedPosition) {
+                    stationViewHolder.stationCardView.setBackgroundResource(R.drawable.shape_search_result_item_selected)
+                } else {
+                    stationViewHolder.stationCardView.setBackgroundColor(ContextCompat.getColor(context, R.color.list_card_background))
+                }
+
                 // show / hide edit views
                 when (expandedStationPosition) {
                     // show edit views
@@ -153,7 +187,13 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
                         stationViewHolder.playButtonView.isGone = true
                         stationViewHolder.stationStarredView.isGone = true
                         stationViewHolder.editViews.isVisible = true
-                        stationViewHolder.stationUriEditView.isGone = !editStationStreamsEnabled
+                        if (editStationStreamsEnabled) {
+                            stationViewHolder.stationUriEditView.isVisible = true
+                            stationViewHolder.stationUriEditView.imeOptions = EditorInfo.IME_ACTION_DONE
+                        } else {
+                            stationViewHolder.stationUriEditView.isGone = true
+                            stationViewHolder.stationNameEditView.imeOptions = EditorInfo.IME_ACTION_DONE
+                        }
                     }
                     // hide edit views
                     else -> {
@@ -199,26 +239,26 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {  }
         })
         stationViewHolder.cancelButton.setOnClickListener {
-            val position: Int = stationViewHolder.bindingAdapterPosition
+            val position: Int = stationViewHolder.adapterPosition
             toggleEditViews(position, station.uuid)
             UiHelper.hideSoftKeyboard(context, stationViewHolder.stationNameEditView)
         }
         stationViewHolder.saveButton.setOnClickListener {
-            val position: Int = stationViewHolder.bindingAdapterPosition
+            val position: Int = stationViewHolder.adapterPosition
             toggleEditViews(position, station.uuid)
             saveStation(station, position, stationViewHolder.stationNameEditView.text.toString(), stationViewHolder.stationUriEditView.text.toString())
             UiHelper.hideSoftKeyboard(context, stationViewHolder.stationNameEditView)
         }
         stationViewHolder.placeOnHomeScreenButton.setOnClickListener {
-            val position: Int = stationViewHolder.bindingAdapterPosition
+            val position: Int = stationViewHolder.adapterPosition
             ShortcutHelper.placeShortcut(context, station)
             toggleEditViews(position, station.uuid)
             UiHelper.hideSoftKeyboard(context, stationViewHolder.stationNameEditView)
         }
         stationViewHolder.stationImageChangeView.setOnClickListener {
-            val position: Int = stationViewHolder.bindingAdapterPosition
+            val position: Int = stationViewHolder.adapterPosition
             collectionAdapterListener.onChangeImageButtonTapped(station.uuid)
-            stationViewHolder.absoluteAdapterPosition
+            stationViewHolder.adapterPosition
             toggleEditViews(position, station.uuid)
             UiHelper.hideSoftKeyboard(context, stationViewHolder.stationNameEditView)
         }
@@ -277,17 +317,21 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
 
     /* Sets up a station's play and edit buttons */
     private fun setStationButtons(stationViewHolder: StationViewHolder, station: Station) {
-        val playbackState: Int = station.playbackState
-        when (playbackState) {
-            PlaybackStateCompat.STATE_PLAYING -> stationViewHolder.playButtonView.setImageResource(R.drawable.ic_stop_circle_outline_36dp)
-            else -> stationViewHolder.playButtonView.setImageResource(R.drawable.ic_play_circle_outline_36dp)
+        when (station.isPlaying) {
+            true -> stationViewHolder.playButtonView.setImageResource(R.drawable.ic_stop_circle_outline_36dp)
+            false -> stationViewHolder.playButtonView.setImageResource(R.drawable.ic_play_circle_outline_36dp)
         }
         stationViewHolder.playButtonView.setOnClickListener {
-            collectionAdapterListener.onPlayButtonTapped(station.uuid, playbackState)
+                collectionAdapterListener.onPlayButtonTapped(stationViewHolder.adapterPosition)
+        }
+        stationViewHolder.stationCardView.setOnClickListener {
+            if (tapAnywherePlaybackEnabled) {
+                stationViewHolder.playButtonView.performClick()
+            }
         }
         stationViewHolder.stationCardView.setOnLongClickListener {
             if (editStationsEnabled) {
-                val position: Int = stationViewHolder.bindingAdapterPosition
+                val position: Int = stationViewHolder.adapterPosition
                 toggleEditViews(position, station.uuid)
                 return@setOnLongClickListener true
             } else {
@@ -311,9 +355,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
                 if (input.startsWith("http")) {
                     // detect content type on background thread
                     CoroutineScope(IO).launch {
-                        val deferred: Deferred<NetworkHelper.ContentType> = async(Dispatchers.Default) { NetworkHelper.detectContentTypeSuspended(input) }
-                        // wait for result
-                        val contentType: String = deferred.await().type.lowercase(Locale.getDefault())
+                        val contentType: String = NetworkHelper.detectContentType(input).type.lowercase(Locale.getDefault())
                         // CASE: stream address detected
                         if (Keys.MIME_TYPES_MPEG.contains(contentType) or
                                 Keys.MIME_TYPES_OGG.contains(contentType) or
@@ -395,7 +437,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
         // update list
         notifyItemRemoved(position)
         // save collection and broadcast changes
-        CollectionHelper.saveCollection(context, newCollection)
+        CollectionHelper.saveCollection(context, newCollection, async = false)
     }
 
 
@@ -452,7 +494,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
 //            // download playlist // todo check content type detection is necessary here
 //            DownloadHelper.downloadPlaylists(context, arrayOf(station.remoteStationLocation))
 //        } else {
-//            LogHelper.w(TAG, "Unable to update station: ${station.name}.")
+//            Log.w(TAG, "Unable to update station: ${station.name}.")
 //        }
 //    }
 
@@ -501,6 +543,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
         when (key) {
             Keys.PREF_EDIT_STATIONS -> editStationsEnabled = PreferencesHelper.loadEditStationsEnabled()
             Keys.PREF_EDIT_STREAMS_URIS -> editStationStreamsEnabled = PreferencesHelper.loadEditStreamUrisEnabled()
+            Keys.PREF_TAP_ANYWHERE_PLAYBACK -> tapAnywherePlaybackEnabled = PreferencesHelper.loadTapAnyWherePlayback()
         }
     }
     /*
@@ -529,7 +572,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
         val stationNameView: TextView = stationCardLayout.findViewById(R.id.station_name)
         val stationStarredView: ImageView = stationCardLayout.findViewById(R.id.starred_icon)
 //        val menuButtonView: ImageView = stationCardLayout.findViewById(R.id.menu_button)
-        val playButtonView: ImageView = stationCardLayout.findViewById(R.id.playback_button)
+        val playButtonView: ImageButton = stationCardLayout.findViewById(R.id.playback_button)
         val editViews: Group = stationCardLayout.findViewById(R.id.default_edit_views)
         val stationImageChangeView: ImageView = stationCardLayout.findViewById(R.id.change_image_view)
         val stationNameEditView: TextInputEditText = stationCardLayout.findViewById(R.id.edit_station_name)
@@ -567,7 +610,7 @@ class CollectionAdapter(private val context: Context, private val collectionAdap
             val newStation: Station = newCollection.stations[newItemPosition]
 
             // compare relevant contents of a station
-            if (oldStation.playbackState != newStation.playbackState) return false
+            if (oldStation.isPlaying != newStation.isPlaying) return false
             if (oldStation.uuid != newStation.uuid) return false
             if (oldStation.starred != newStation.starred) return false
             if (oldStation.name != newStation.name) return false
