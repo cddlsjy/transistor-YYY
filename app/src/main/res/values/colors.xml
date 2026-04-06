@@ -23,7 +23,7 @@
     <!-- list -->
     <color name="list_card_background">#fffffbfe</color> <!-- android:colorBackground / colorSurface -->
     <color name="list_card_cover_background">#ffe7e0ec</color> <!-- colorSurfaceVariant -->
-    <color name="list_card_delete_background">#ffb3261e</color> <!-- colorError -->
+    <color name="list_card_delete_background">#FFD6E3FF</color> <!-- colorError -->
     <color name="list_card_delete_icon">#ffffffff</color> <!-- colorOnError (white) -->
     <color name="list_card_mark_starred_background">#ff6750a4</color> <!-- colorPrimary -->
     <color name="list_card_mark_starred_star">#ffffffff</color> <!-- colorOnPrimary -->
